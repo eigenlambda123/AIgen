@@ -1,6 +1,7 @@
 import json
 import requests
 import os
+import inspect
 from pathlib import Path 
 
 # target base directory
@@ -15,15 +16,6 @@ def _get_safe_path(relative_path: str) -> Path:
         raise PermissionError(f"Access denied: Path '{relative_path}' is outside workspace scope.")
     return target_path
 
-
-# direct LLM call via ollama REST API
-def call_ollama(messages: list, model: str =  "qwen2.5:7b") -> str:
-    response = requests.post(
-        "http://localhost:11434/api/chat",
-        json={"model": model, "messages": messages, "stream": False}
-    )
-    # extract ai response
-    return response.json()["message"]["content"] 
 
 # tool definitions
 
@@ -66,31 +58,58 @@ TOOL_REGISTRY = {
    'list_directory': list_directory
 }
 
-# system prompt for specifying JSON tool-calling format
-SYSTEM_PROMPT = """You are a helpful assistant with access to tools.
+# dynamic tool schema & system prompt construction
+def generate_system_prompt() -> str:
+    tool_descriptions = []
+    for name, func in TOOL_REGISTRY.items():
+        doc = func.__doc__ or "No description available."
+        # inspect object/function detail
+        sig = inspect.signature(func)
+        tool_descriptions.append(f"- {name}{sig}: {doc}")
+
+    tools_formatted = "\n".join(tool_descriptions)
+
+    return f"""You are an assistant that helps users manage and inspect local files.
 
 Available tools:
-- calculator(expression: str): Evaluates a mathematical expression.
+{tools_formatted}
 
-To use a tool, respond ONLY with a JSON object in this format:
-{
+INSTRUCTIONS:
+1. To use a tool, output ONLY a single valid JSON object matching this exact structure:
+{{
     "tool": "tool_name",
-    "args": {"arg_name": "value"}
-}
+    "args": {{"arg_name"": "value"}}
+}}
 
-If you do not need to use a  tool, respond with your final message as plain text.
-"""
+2. Never output text before or after the JSON when involking a tool.
+3. Once you recieve the tool results, answer that user's question directly in plain text.
+    """
 
-# custom ReAct agent execution loop
+# Ollama REST API Client & ReAct Loop
+def call_ollama(messages: list, model: str =  "qwen2.5:7b") -> str:
+    response = requests.post(
+        "http://localhost:11434/api/chat",
+        json={
+            "model": model,
+            "messages": messages, 
+            "stream": False,
+            "options": {"temperature": 0.0}
+        }
+    )
+    # extract ai response
+    return response.json()["message"]["content"] 
+
 def run_agent(user_query: str):
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": generate_system_prompt()},
         {"role": "user", "content": user_query}
     ]
 
+    print(f"User Question: {user_query}\n" + "-"*50)
+
     # ReAct loop (max 5 iterations to prevent infinite loops)
     for _ in range(5):
-        raw_response = call_ollama(messages)
+        raw_response = call_ollama(messages).strip()
         messages.append({"role": "assistant", "content":raw_response})
 
         # check if model wants to call a tool via JSON
@@ -102,6 +121,7 @@ def run_agent(user_query: str):
             if tool_name in TOOL_REGISTRY:
                 print(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")
                 tool_result = TOOL_REGISTRY[tool_name](**tool_args)
+                print(f"[Tool Output]\n{tool_result}\n" + "-"*50)
 
                 # append tool result back to model context
                 messages.append({
@@ -118,3 +138,4 @@ def run_agent(user_query: str):
 # texts
 print("Response:\n", run_agent("hi!"))
 print("Response:\n", run_agent("what is 1+1?"))
+print("Response:\n", run_agent("Check what files are in my workplace directory"))
