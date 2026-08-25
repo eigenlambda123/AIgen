@@ -43,6 +43,28 @@ def list_directory(relative_path: str = ".") -> str:
         return f"Error listing directory: {str(e)}"
 
 
+def read_file(relative_path: str) -> str:
+    """Reads and returns the text content of a file within the workplace"""
+    try:
+        target_path = _get_safe_path(relative_path)
+        if not target_path.exists():
+            return f"Error: File '{relative_path}' does not exist."
+        if not target_path.is_file():
+            return f"Error: '{relative_path}' is a directory, not a file."
+
+        # read text content safely
+        with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+
+        # we set max characters to truncate large files to fit inside the model context window
+        max_chars = 3000
+        if len(content) > max_chars:
+            return content[:max_chars] + f"\n\n[... Truncated: file exceeds {max_chars} characters ...]"
+        return content
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
+
+
 def calculator(expression: str) -> str:
     """"Evaluates a mathematical expression"""
     try:
@@ -54,8 +76,9 @@ def calculator(expression: str) -> str:
         return f"Error: {str:e}"
 
 TOOL_REGISTRY = {
+    'read_file': read_file,
+   'list_directory': list_directory,
    'calculator': calculator ,
-   'list_directory': list_directory
 }
 
 # dynamic tool schema & system prompt construction
@@ -105,7 +128,7 @@ def run_agent(user_query: str):
         {"role": "user", "content": user_query}
     ]
 
-    print(f"User Question: {user_query}\n" + "-"*50)
+    print(f"User Question: {user_query}\n")
 
     # ReAct loop (max 5 iterations to prevent infinite loops)
     for _ in range(5):
@@ -121,7 +144,7 @@ def run_agent(user_query: str):
             if tool_name in TOOL_REGISTRY:
                 print(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")
                 tool_result = TOOL_REGISTRY[tool_name](**tool_args)
-                print(f"[Tool Output]\n{tool_result}\n" + "-"*50)
+                print(f"[Tool Output]\n{tool_result}\n")
 
                 # append tool result back to model context
                 messages.append({
@@ -135,7 +158,10 @@ def run_agent(user_query: str):
 
     return "Agent exceeded maximum iteration steps."
 
-# texts
+# tests
+print("-"*50)
 print("Response:\n", run_agent("hi!"))
+print("-"*50)
 print("Response:\n", run_agent("what is 1+1?"))
-print("Response:\n", run_agent("Check what files are in my workplace directory"))
+print("-"*50)
+print("Response:\n", run_agent("Check what files are in my workplace directory and tell me what the note about rm villa says"))
