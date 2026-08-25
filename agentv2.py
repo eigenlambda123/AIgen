@@ -2,6 +2,8 @@ import json
 import requests
 import os
 import inspect
+import json
+import re
 from pathlib import Path 
 
 # target base directory
@@ -122,39 +124,79 @@ def call_ollama(messages: list, model: str =  "qwen2.5:7b") -> str:
     # extract ai response
     return response.json()["message"]["content"] 
 
+def _extract_tool_call(raw_response: str):
+    """Extracts a tool call from the model's raw response, if present."""
+    text = (raw_response or "").strip()
+    if not text:
+        return None
+
+    # remove any fenced code blocks (```json ... ```) to isolate potential JSON
+    fenced = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE | re.DOTALL)
+    candidates = [fenced, text]
+
+    # attempt to parse each candidate as JSON 
+    for candidate in candidates:
+        try:
+            obj = json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+        else:
+            if isinstance(obj, dict):
+                return obj
+
+        start = candidate.find("{")
+        end = candidate.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            inner = candidate[start:end + 1]
+            try:
+                obj = json.loads(inner)
+            except json.JSONDecodeError:
+                continue
+            else:
+                if isinstance(obj, dict):
+                    return obj
+
+    return None
+
+
 def run_agent(user_query: str):
+    """Runs the agent loop to process a user query, invoking tools as needed."""
     messages = [
         {"role": "system", "content": generate_system_prompt()},
         {"role": "user", "content": user_query}
     ]
 
     print(f"User Question: {user_query}\n")
-
-    # ReAct loop (max 5 iterations to prevent infinite loops)
+    
+   # ReAct loop (max 5 iterations to prevent infinite loops)
     for _ in range(5):
         raw_response = call_ollama(messages).strip()
-        messages.append({"role": "assistant", "content":raw_response})
+        messages.append({"role": "assistant", "content": raw_response})
 
-        # check if model wants to call a tool via JSON
-        try:
-            action = json.loads(raw_response)
-            tool_name = action.get("tool")
-            tool_args = action.get("args", {})
-
-            if tool_name in TOOL_REGISTRY:
-                print(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")
-                tool_result = TOOL_REGISTRY[tool_name](**tool_args)
-                print(f"[Tool Output]\n{tool_result}\n")
-
-                # append tool result back to model context
-                messages.append({
-                    "role": "user",
-                    "content": f"Tool output from '{tool_name}': {tool_result}"
-                })
-                continue
-        except (json.JSONDecodeError, TypeError):
-            # model output was not JSON -> it's the final text answer
+        # check if the model's response contains a tool call
+        action = _extract_tool_call(raw_response)
+        if action is None:
+            # if no tool call is detected, return the model's response directly
             return raw_response
+
+        tool_name = action.get("tool")
+        tool_args = action.get("args", {})
+
+        if not isinstance(tool_name, str) or tool_name not in TOOL_REGISTRY:
+            return raw_response
+
+        if not isinstance(tool_args, dict):
+            return raw_response
+
+        print(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")
+        tool_result = TOOL_REGISTRY[tool_name](**tool_args)
+        print(f"[Tool Output]\n{tool_result}\n")
+
+        messages.append({
+            "role": "user",
+            "content": f"Tool output from '{tool_name}': {tool_result}"
+        })
+        continue
 
     return "Agent exceeded maximum iteration steps."
 
@@ -164,4 +206,4 @@ print("Response:\n", run_agent("hi!"))
 print("-"*50)
 print("Response:\n", run_agent("what is 1+1?"))
 print("-"*50)
-print("Response:\n", run_agent("Check what files are in my workplace directory and tell me what the note about rm villa says"))
+print("Response:\n", run_agent("What is 1+1? after answering, then check what files are in my workplace directory and tell me what the note about rm villa says"))
