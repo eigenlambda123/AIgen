@@ -1,6 +1,20 @@
 import json
 import requests
-import inspect
+import os
+from pathlib import Path 
+
+# target base directory
+BASE_DIR = Path("C:\\Users\\rmvilla\\Documents\\Books").resolve()
+BASE_DIR.mkdir(exist_ok=True)
+
+# helper for path sandboxing
+def _get_safe_path(relative_path: str) -> Path:
+    """Ensures the target path remains strictly inside BASE_DIR"""
+    target_path = (BASE_DIR / relative_path).resolve()
+    if not str(target_path).startswith(str(BASE_DIR)):
+        raise PermissionError(f"Access denied: Path '{relative_path}' is outside workspace scope.")
+    return target_path
+
 
 # direct LLM call via ollama REST API
 def call_ollama(messages: list, model: str =  "qwen2.5:7b") -> str:
