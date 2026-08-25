@@ -26,6 +26,31 @@ def call_ollama(messages: list, model: str =  "qwen2.5:7b") -> str:
     return response.json()["message"]["content"] 
 
 # tool definitions
+
+# file system tools
+def list_directory(relative_path: str = ".") -> str:
+    """List files and folders inside a specified workplace directory."""
+    try:
+        target_path = _get_safe_path(relative_path)
+        if not target_path.exists():
+            return f"Error: Directory '{relative_path}' does not exist."
+        if not target_path.is_dir():
+            return f"Error: '{relative_path}' is a file, not a directory."
+
+        items = os.listdir(target_path)
+        if not items:
+            return f"Directory '{relative_path}' is empty."
+
+        formatted = []
+        for item in items:
+            full_item = target_path / item
+            kind = "DIR " if full_item.is_dir() else "FILE"
+            formatted.append(f"[{kind}] {item}")
+        return "\n".join(formatted)
+    except Exception as e:
+        return f"Error listing directory: {str(e)}"
+
+
 def calculator(expression: str) -> str:
     """"Evaluates a mathematical expression"""
     try:
@@ -37,7 +62,8 @@ def calculator(expression: str) -> str:
         return f"Error: {str:e}"
 
 TOOL_REGISTRY = {
-   'calculator': calculator 
+   'calculator': calculator ,
+   'list_directory': list_directory
 }
 
 # system prompt for specifying JSON tool-calling format
