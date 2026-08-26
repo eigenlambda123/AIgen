@@ -1,4 +1,5 @@
 import os
+from pypdf import PdfReader
 from pathlib import Path
 
 # target base directory
@@ -60,6 +61,39 @@ def read_file(relative_path: str) -> str:
         return f"Error reading file: {str(e)}"
 
 
+def read_pdf(relative_path: str) -> str:
+    """Reads and returns the text content of a PDF file within the workplace"""
+    try:
+        target_path = _get_safe_path(relative_path)
+        if not target_path.exists():
+            return f"Error: File '{relative_path}' does not exist."
+        if not target_path.is_file():
+            return f"Error: '{relative_path}' is a directory, not a file."
+        if target_path.suffix.lower() != ".pdf":
+            return f"Error: '{relative_path}' is not a PDF file."
+
+        # extract the pages and text of the PDF
+        reader = PdfReader(str(target_path))
+        pages_text = []
+        for i, page in enumerate(reader.pages, start=1):
+            text = page.extract_text() or ""
+            pages_text.append(f"\n--- Page {i} ---\n{text}")
+
+        # after extracting, join and truncate if necessary
+        content = "".join(pages_text).strip()
+        if not content:
+            return "No extractable text found (this PDF may be scanned/image-based)."
+
+        # set maximum characters to truncate large PDFs to fit inside the model context window
+        max_chars = 8000
+        if len(content) > max_chars:
+            return content[:max_chars] + f"\n\n[... Truncated: PDF exceeds {max_chars} characters ...]"
+        return content
+    except Exception as e:
+        return f"Error reading PDF: {str(e)}"
+
+
+
 def calculator(expression: str) -> str:
     """Evaluates a mathematical expression"""
     try:
@@ -74,5 +108,6 @@ def calculator(expression: str) -> str:
 TOOL_REGISTRY = {
     'read_file': read_file,
     'list_directory': list_directory,
+    'read_pdf': read_pdf,
     'calculator': calculator,
 }

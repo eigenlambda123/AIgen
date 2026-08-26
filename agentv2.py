@@ -76,9 +76,9 @@ def run_agent(user_query: str):
     return "Agent exceeded maximum iteration steps."
 
 if __name__ == "__main__":
+    # print("-" * 50)
+    # print("Response:\n", run_agent("hi!"))
+    # print("-" * 50)
+    # print("Response:\n", run_agent("What is 1+1? after answering, then check what files are in my workplace directory and tell me what the note about rm villa says"))
     print("-" * 50)
-    print("Response:\n", run_agent("hi!"))
-    print("-" * 50)
-    print("Response:\n", run_agent("what is 1+1?"))
-    print("-" * 50)
-    print("Response:\n", run_agent("What is 1+1? after answering, then check what files are in my workplace directory and tell me what the note about rm villa says"))
+    print("Response:\n", run_agent("Look inside the School directory, there you will find another directory called environmental_science, inside that you will find a pdf file called ENVI_SCI-ASYNCHRONOUS-MODULE-1, I want you to read the contents of that pdf file and summarize it for me"))
