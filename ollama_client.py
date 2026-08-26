@@ -16,7 +16,7 @@ def call_ollama(messages: list, model: str = "qwen2.5:7b") -> str:
             "stream": False,
             "options": {"temperature": 0.0}
         },
-        timeout=15
+        timeout=60
     )
     resp.raise_for_status()
     data = resp.json()
