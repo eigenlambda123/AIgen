@@ -127,7 +127,7 @@ def capture_screenshot(region=None, scale=0.6, as_base64=True, jpg_quality=80):
         On success: base64 string (if as_base64 True) or raw bytes of image.
         On error: string beginning with "Error:" describing the problem.
     """ 
-    
+
     try:
         with mss() as sct:
             # choose monitor 1 (primary). If region provided, override monitor dict
@@ -168,4 +168,12 @@ TOOL_REGISTRY = {
     'read_pdf': read_pdf,
     'capture_screenshot': capture_screenshot,
     'calculator': calculator,
+}
+
+TOOL_CAPABILITY = {
+    "read_file": "text",
+    "list_directory": "text",
+    "read_pdf": "text",
+    "calculator": "text",
+    "capture_screenshot": "vision",
 }

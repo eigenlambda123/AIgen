@@ -1,12 +1,19 @@
 import json
 import inspect
 import re
+from typing import Any, Dict, Tuple
 
-from fs_tools import TOOL_REGISTRY
+from fs_tools import TOOL_REGISTRY, TOOL_CAPABILITY
 from ollama_client import call_ollama, extract_tool_call
 
+DEFAULT_MODELS = {
+    "planner": "qwen2.5:7b",   # decides tools and composes final answer
+    "text": "qwen2.5:7b",      # text specialist
+    "vision": "qwen2.5vl:7b",  # screenshot/image interpretation
+}
+
 # dynamic tool schema & system prompt construction
-def generate_system_prompt() -> str:
+def generate_planner_prompt() -> str:
     tool_descriptions = []
     for name, func in TOOL_REGISTRY.items():
         doc = func.__doc__ or "No description available."
@@ -33,11 +40,69 @@ INSTRUCTIONS:
     """
 
 
+def generate_capability_prompt(capability: str) -> str:
+    if capability == "vision":
+        return "You are a vision assistant. Describe exactly what is visible in the provided image."
+    return "You are a helpful assistant."
 
-def run_agent(user_query: str):
+def get_tool_capability(tool_name: str) -> str:
+    # return the capability associated with a tool, defaulting to "text" if not found
+    return TOOL_CAPABILITY.get(tool_name, "text")
+
+def get_model_for_capability(capability: str, models: Dict[str, str]) -> str:
+    """Returns the model name for a given capability, defaulting to the planner model if not found."""
+    if capability in models:
+        return models[capability]
+    return models.get("planner", DEFAULT_MODELS["planner"])
+
+def build_tool_feedback(
+    tool_name: str,
+    tool_result: Any,
+    user_query: str,
+    models: Dict[str, str]
+) -> str:
+    """Builds a message for the model based on the tool's output and the user's query."""
+    capability = get_tool_capability(tool_name)
+
+    if capability == "vision":
+        if isinstance(tool_result, str) and tool_result.startswith("Error:"):
+            return f"Tool output from '{tool_name}': {tool_result}"
+
+        vision_messages = [
+            {"role": "system", "content": generate_capability_prompt(capability)},
+            {
+                "role": "user",
+                "content": f"User request: {user_query}",
+                "images": [tool_result] # base64-encoded image string
+            }
+        ]
+        vision_model = get_model_for_capability(capability, models)
+        vision_summary = call_ollama(vision_messages, model=vision_model).strip()
+        return f"Tool output from '{tool_name}' (vision interpretation): {vision_summary}"
+
+    return f"Tool output from '{tool_name}': {tool_result}"
+
+def validate_tool_action(action: dict) -> Tuple[bool, str, dict]:
+    tool_name = action.get("tool")
+    tool_args = action.get("args", {})
+
+    if not isinstance(tool_name, str):
+        return False, "", {}
+    if tool_name not in TOOL_REGISTRY:
+        return False, "", {}
+    if not isinstance(tool_args, dict):
+        return False, "", {}
+
+    return True, tool_name, tool_args
+
+def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
     """Runs the agent loop to process a user query, invoking tools as needed."""
-    messages = [
-        {"role": "system", "content": generate_system_prompt()},
+    models = dict(DEFAULT_MODELS)
+    if model_overrides:
+        models.update(model_overrides)
+
+    planner_messages = [
+        {"role": "system", "content": generate_planner_prompt()},
         {"role": "user", "content": user_query}
     ]
 
@@ -45,8 +110,9 @@ def run_agent(user_query: str):
     
    # ReAct loop (max 5 iterations to prevent infinite loops)
     for _ in range(5):
-        raw_response = call_ollama(messages).strip()
-        messages.append({"role": "assistant", "content": raw_response})
+        planner_model = get_model_for_capability("planner", models)
+        raw_response = call_ollama(planner_messages, model=planner_model).strip()
+        planner_messages.append({"role": "assistant", "content": raw_response})
 
         # check if the model's response contains a tool call
         action = extract_tool_call(raw_response)
@@ -54,24 +120,24 @@ def run_agent(user_query: str):
             # if no tool call is detected, return the model's response directly
             return raw_response
 
-        tool_name = action.get("tool")
-        tool_args = action.get("args", {})
-
-        if not isinstance(tool_name, str) or tool_name not in TOOL_REGISTRY:
-            return raw_response
-
-        if not isinstance(tool_args, dict):
+        # Validate the tool action
+        ok, tool_name, tool_args = validate_tool_action(action)
+        if not ok:
             return raw_response
 
         print(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")
         tool_result = TOOL_REGISTRY[tool_name](**tool_args)
         print(f"[Tool Output]\n{tool_result}\n")
 
-        messages.append({
-            "role": "user",
-            "content": f"Tool output from '{tool_name}': {tool_result}"
-        })
-        continue
+        feedback = build_tool_feedback(
+            tool_name,
+            tool_result, 
+            user_query, 
+            models
+        )
+
+        print(f"[Tool Output]\n{feedback}\n")
+        planner_messages.append({"role": "user", "content": feedback})
 
     return "Agent exceeded maximum iteration steps."
 
