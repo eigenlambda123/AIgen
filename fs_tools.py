@@ -2,6 +2,14 @@ import os
 from pypdf import PdfReader
 from pathlib import Path
 
+import io
+import base64
+from mss import mss
+import numpy as np
+import cv2
+from PIL import Image
+import pytesseract
+
 # target base directory
 BASE_DIR = Path("C:\\Users\\rmvilla\\Documents\\Books").resolve()
 BASE_DIR.mkdir(exist_ok=True)
@@ -105,9 +113,59 @@ def calculator(expression: str) -> str:
         return f"Error: {str(e)}"
 
 
+def capture_screenshot(region=None, scale=0.6, as_base64=True, jpg_quality=80):
+    """
+    Captures a screenshot of the specified region (or full screen if None) and returns it as a base64-encoded string.
+   
+    Args:
+        region: Optional tuple (left, top, width, height). If None, capture full primary monitor.
+        scale: Float in (0,1] to downscale the image for smaller size / faster OCR.
+        as_base64: If True return a base64-encoded PNG/JPEG string; otherwise return raw bytes.
+        jpg_quality: JPEG quality (1-100) used if returning JPEG bytes.
+
+    Returns:
+        On success: base64 string (if as_base64 True) or raw bytes of image.
+        On error: string beginning with "Error:" describing the problem.
+    """ 
+    
+    try:
+        with mss() as sct:
+            # choose monitor 1 (primary). If region provided, override monitor dict
+            monitor = sct.monitors[1]
+            if region:
+                left, top, width, height = region
+                monitor = {"left": int(left), "top": int(top), "width": int(width), "height": int(height)}
+            
+            # grab() returns an MSSImage; convert to numpy array (BGRA)
+            sct_img = np.array(sct.grab(monitor))
+
+            # convert BGRA to BGR (drop alpha)
+            img_bgr = cv2.cvtColor(sct_img, cv2.COLOR_BGRA2BGR)
+
+            # optionally downscale to reduce size/costs
+            if scale and scale > 0 and scale < 1.0:
+                new_w = int(img_bgr.shape[1] * scale)
+                new_h = int(img_bgr.shape[0] * scale)
+                img_bgr = cv2.resize(img_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+            # encode to JPEG
+            success, buf = cv2.imencode(".jpg", img_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), int(jpg_quality)])
+            if not success:
+                return "Error: Failed to encode image to JPEG."
+
+            # return as base64 or raw bytes
+            img_bytes = buf.tobytes()
+            if as_base64:
+                return base64.b64encode(img_bytes).decode("ascii")
+            return img_bytes
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+
 TOOL_REGISTRY = {
     'read_file': read_file,
     'list_directory': list_directory,
     'read_pdf': read_pdf,
+    'capture_screenshot': capture_screenshot,
     'calculator': calculator,
 }
