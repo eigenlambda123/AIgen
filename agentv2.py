@@ -63,6 +63,8 @@ def build_tool_feedback(
 ) -> str:
     """Builds a message for the model based on the tool's output and the user's query."""
     capability = get_tool_capability(tool_name)
+    routed_model = get_model_for_capability(capability, models)
+    print(f"[Model Router] tool={tool_name} capability={capability} model={routed_model}")
 
     if capability == "vision":
         if isinstance(tool_result, str) and tool_result.startswith("Error:"):
@@ -111,6 +113,7 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
    # ReAct loop (max 5 iterations to prevent infinite loops)
     for _ in range(5):
         planner_model = get_model_for_capability("planner", models)
+        print(f"[Model Router] planner -> {planner_model}")
         raw_response = call_ollama(planner_messages, model=planner_model).strip()
         planner_messages.append({"role": "assistant", "content": raw_response})
 
@@ -147,5 +150,5 @@ if __name__ == "__main__":
     # print("-" * 50)
     # print("Response:\n", run_agent("What is 1+1? after answering, then check what files are in my workplace directory and tell me what the note about rm villa says"))
     # print("-" * 50)
-    # print("Response:\n", run_agent("Look inside the School directory, there you will find another directory called environmental_science, inside that you will find a pdf file called ENVI_SCI-ASYNCHRONOUS-MODULE-1, I want you to read the contents of that pdf file and summarize it for me"))
+    # print("Response:\n", run_agent("List the current files and directory, Look inside the School directory, there you will find another directory called environmental_science, inside that you will find a pdf file called ENVI_SCI-ASYNCHRONOUS-MODULE-1, I want you to read the contents of that pdf file and summarize it for me"))
     print(run_agent("Look at my screen and tell me what you're seeing"))

@@ -171,8 +171,8 @@ TOOL_REGISTRY = {
 }
 
 TOOL_CAPABILITY = {
-    "read_file": "text",
     "list_directory": "text",
+    "read_file": "text",
     "read_pdf": "text",
     "calculator": "text",
     "capture_screenshot": "vision",
