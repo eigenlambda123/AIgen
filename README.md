@@ -1,4 +1,4 @@
-"# local-slm" 
+#local-slm
 
 ## Overview
 
@@ -37,7 +37,7 @@ All tools operate through the registry in `fs_tools.py`.
 | `ocr_image_base64` | Text | Extracts text from a base64-encoded image using Tesseract |
 | `ocr_screen` | Text | Captures the screen and performs OCR as a convenience operation |
 
-The default filesystem workspace is:
+The default filesystem workspace is (you can modify this in `fs_tools.py`):
 
 ```text
 C:\Users\rmvilla\Documents\Books
@@ -63,3 +63,5 @@ Install the packages listed in `requirements.txt`. The application expects:
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed Mermaid diagrams covering
 the end-to-end agent flow, model routing, registry, and each individual tool."
+
+_This project is a work in progress and may be updated frequently. Please check the repository for the latest changes._
