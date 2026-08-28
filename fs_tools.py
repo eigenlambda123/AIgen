@@ -14,6 +14,11 @@ import pytesseract
 BASE_DIR = Path("C:\\Users\\rmvilla\\Documents\\Books").resolve()
 BASE_DIR.mkdir(exist_ok=True)
 
+# pytesseract configuration: specify the path to the Tesseract executable
+pytesseract.pytesseract.tesseract_cmd = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+)
+
 # helper for path sandboxing
 def _get_safe_path(relative_path: str) -> Path:
     """Ensures the target path remains strictly inside BASE_DIR"""
@@ -21,6 +26,7 @@ def _get_safe_path(relative_path: str) -> Path:
     if not str(target_path).startswith(str(BASE_DIR)):
         raise PermissionError(f"Access denied: Path '{relative_path}' is outside workspace scope.")
     return target_path
+
 
 
 # file system tools
@@ -112,7 +118,7 @@ def calculator(expression: str) -> str:
     except Exception as e:
         return f"Error: {str(e)}"
 
-
+# screenshot and OCR tools
 def capture_screenshot(region=None, scale=0.6, as_base64=True, jpg_quality=80):
     """
     Captures a screenshot of the specified region (or full screen if None) and returns it as a base64-encoded string.
@@ -162,12 +168,62 @@ def capture_screenshot(region=None, scale=0.6, as_base64=True, jpg_quality=80):
     except Exception as e:
         return f"Error: {str(e)}"
 
+
+def ocr_image_base64(b64_image, lang: str = "eng", max_chars: int = 4000) -> str:
+    """Extracts text from a base64-encoded image using Tesseract OCR."""
+    try:
+        # convert the base64 string back to image bytes
+        image_bytes = base64.b64decode(b64_image)
+        
+        # open those bytes as an image
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    
+        # convert to grayscale for better OCR accuracy
+        image_array = np.array(image)
+        gray_image = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
+        ocr_image = Image.fromarray(gray_image)
+
+        # ask tesseract to extract text from the image
+        text = pytesseract.image_to_string(ocr_image, lang=lang)
+
+        text = text.strip()
+
+        if not text:
+            return "No text detected in the image."
+
+        if len(text) > max_chars:
+            return text[:max_chars] + f"\n\n[... Truncated: text exceeds {max_chars} characters ...]"
+
+        return text
+
+    except Exception as e:
+        return f"Error during OCR: {str(e)}"
+
+def ocr_screen(
+    region=None, 
+    scale=0.6, 
+    lang="eng", 
+    max_chars=4000
+) -> str:
+    """Captures a screenshot of the screenand performs OCR on it.
+    This is a connector function that combines capture_screenshot and ocr_image for convenience."""
+    screenshot = capture_screenshot(region=region, scale=scale, as_base64=True)
+
+    if isinstance(screenshot, str) and screenshot.startswith("Error:"):
+        return screenshot
+
+    return ocr_image_base64(screenshot, lang=lang, max_chars=max_chars)
+
+
 TOOL_REGISTRY = {
     'read_file': read_file,
     'list_directory': list_directory,
     'read_pdf': read_pdf,
     'capture_screenshot': capture_screenshot,
+    'ocr_image_base64': ocr_image_base64,
+    'ocr_screen': ocr_screen,
     'calculator': calculator,
+        
 }
 
 TOOL_CAPABILITY = {
@@ -176,4 +232,6 @@ TOOL_CAPABILITY = {
     "read_pdf": "text",
     "calculator": "text",
     "capture_screenshot": "vision",
+    "ocr_image_base64": "text",
+    "ocr_screen": "text",
 }
