@@ -39,7 +39,7 @@ Paths passed to filesystem tools are resolved and restricted to this workspace.
 
 ## Main modules
 
-- `agentv2.py` — planner prompt, model routing, tool validation, and agent loop
+- `agent.py` — planner prompt, model routing, tool validation, and agent loop
 - `fs_tools.py` — filesystem, PDF, screenshot, and OCR integrations
 - `ollama_client.py` — local Ollama API calls and tool-call JSON extraction
 
