@@ -2,15 +2,7 @@
 
 ## Overview
 
-`local-slm` is a local tool-using assistant that combines an Ollama-compatible
-language model with filesystem, PDF, screenshot, and OCR capabilities. A
-planner model receives the user's request, decides whether a registered tool
-is needed, executes the tool, and then uses the result to produce a response.
-
-The agent runs a bounded ReAct-style loop with a maximum of five iterations.
-Tool calls are expected as JSON objects containing a tool name and argument
-object. Tool results are fed back to the planner, while image captures can be
-routed through a vision model for interpretation.
+`local-slm` is a local, self-contained implementation of a small language model (SLM) agent that can use a set of tools to perform tasks on the local machine. It is designed to run without requiring internet access, relying on locally available models and tools.
 
 ## Models
 
