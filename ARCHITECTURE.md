@@ -131,7 +131,7 @@ outside `BASE_DIR`.
 
 ```mermaid
 flowchart LR
-    Input[relative_path = "."] --> Safe[_get_safe_path]
+    Input["relative_path = ."] --> Safe[_get_safe_path]
     Safe --> Exists{Path exists?}
     Exists -->|No| Err1[Return directory-not-found error]
     Exists -->|Yes| Dir{Is directory?}
@@ -150,7 +150,7 @@ flowchart LR
     Input[relative_path] --> Safe[_get_safe_path]
     Safe --> Checks{Exists and is file?}
     Checks -->|No| Error[Return descriptive error]
-    Checks -->|Yes| Open[Open UTF-8<br/>errors='ignore']
+    Checks -->|Yes| Open["Open UTF-8<br/>errors=ignore"]
     Open --> Read[Read full text]
     Read --> Size{Length > 3,000 chars?}
     Size -->|No| Output[Return content]
