@@ -107,17 +107,6 @@ def read_pdf(relative_path: str) -> str:
         return f"Error reading PDF: {str(e)}"
 
 
-
-def calculator(expression: str) -> str:
-    """Evaluates a mathematical expression"""
-    try:
-        allowed_chars = set("0123456789+-*/(). ")
-        if not all(c in allowed_chars for c in expression):
-            return "Error: Invalid characters"
-        return str(eval(expression))
-    except Exception as e:
-        return f"Error: {str(e)}"
-
 # screenshot and OCR tools
 def capture_screenshot(region=None, scale=0.6, as_base64=True, jpg_quality=80):
     """
@@ -222,7 +211,6 @@ TOOL_REGISTRY = {
     'capture_screenshot': capture_screenshot,
     'ocr_image_base64': ocr_image_base64,
     'ocr_screen': ocr_screen,
-    'calculator': calculator,
         
 }
 
@@ -230,7 +218,6 @@ TOOL_CAPABILITY = {
     "list_directory": "text",
     "read_file": "text",
     "read_pdf": "text",
-    "calculator": "text",
     "capture_screenshot": "vision",
     "ocr_image_base64": "text",
     "ocr_screen": "text",
