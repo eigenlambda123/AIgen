@@ -1,6 +1,4 @@
-langchain
-langchain-ollama
-langgraph
+mypy
 
 # Image processing
 pypdf

@@ -1,6 +1,7 @@
 import os
 from pypdf import PdfReader
 from pathlib import Path
+from typing import Union, Optional, Tuple
 
 import io
 import base64
@@ -10,14 +11,14 @@ import cv2
 from PIL import Image
 import pytesseract
 
-# target base directory
-BASE_DIR = Path("C:\\Users\\rmvilla\\Documents\\Books").resolve()
-BASE_DIR.mkdir(exist_ok=True)
+# Import configuration
+from config import WORKSPACE_DIR, TESSERACT_PATH, TRUNCATION_LIMITS, SEARCH_MAX_RESULTS, DEFAULT_SCREENSHOT_SCALE, DEFAULT_JPEG_QUALITY, DEFAULT_OCR_LANGUAGE
 
-# pytesseract configuration: specify the path to the Tesseract executable
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
+# pytesseract configuration: use Tesseract path from config
+pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+
+# Alias BASE_DIR from config for backward compatibility
+BASE_DIR = WORKSPACE_DIR
 
 # helper for path sandboxing
 def _get_safe_path(relative_path: str) -> Path:
@@ -26,7 +27,6 @@ def _get_safe_path(relative_path: str) -> Path:
     if not str(target_path).startswith(str(BASE_DIR)):
         raise PermissionError(f"Access denied: Path '{relative_path}' is outside workspace scope.")
     return target_path
-
 
 
 # file system tools
@@ -67,7 +67,7 @@ def read_file(relative_path: str) -> str:
             content = f.read()
 
         # we set max characters to truncate large files to fit inside the model context window
-        max_chars = 3000
+        max_chars = TRUNCATION_LIMITS["file"]
         if len(content) > max_chars:
             return content[:max_chars] + f"\n\n[... Truncated: file exceeds {max_chars} characters ...]"
         return content
@@ -99,18 +99,19 @@ def read_pdf(relative_path: str) -> str:
             return "No extractable text found (this PDF may be scanned/image-based)."
 
         # set maximum characters to truncate large PDFs to fit inside the model context window
-        max_chars = 8000
+        max_chars = TRUNCATION_LIMITS["pdf"]
         if len(content) > max_chars:
             return content[:max_chars] + f"\n\n[... Truncated: PDF exceeds {max_chars} characters ...]"
         return content
     except Exception as e:
         return f"Error reading PDF: {str(e)}"
 
+
 def search_files(
     relative_path: str, 
     query: str = "",
-    file_types: list[str] | None = None,
-    max_results: int = 20,
+    file_types: Optional[list[str]] = None,
+    max_results: int = SEARCH_MAX_RESULTS,
     case_sensitive: bool = False    
 ) -> str:
     """
@@ -180,7 +181,7 @@ def search_files(
         if not matches:
             return f"No matches found for query '{query}' in directory '{relative_path}'."
 
-        
+
         return "\n".join(matches[:max_results])
 
     except Exception as e:
@@ -188,7 +189,12 @@ def search_files(
 
 
 # screenshot and OCR tools
-def capture_screenshot(region=None, scale=0.6, as_base64=True, jpg_quality=80):
+def capture_screenshot(
+    region: Optional[Tuple[int, int, int, int]] = None, 
+    scale: float = DEFAULT_SCREENSHOT_SCALE, 
+    as_base64: bool = True, 
+    jpg_quality: int = DEFAULT_JPEG_QUALITY
+) -> Union[str, bytes]:
     """
     Captures a screenshot of the specified region (or full screen if None) and returns it as a base64-encoded string.
    
@@ -238,8 +244,10 @@ def capture_screenshot(region=None, scale=0.6, as_base64=True, jpg_quality=80):
         return f"Error: {str(e)}"
 
 
-def ocr_image_base64(b64_image, lang: str = "eng", max_chars: int = 4000) -> str:
+def ocr_image_base64(b64_image: str, lang: str = "eng", max_chars: Optional[int] = None) -> str:
     """Extracts text from a base64-encoded image using Tesseract OCR."""
+    if max_chars is None:
+        max_chars = TRUNCATION_LIMITS["ocr"]
     try:
         # convert the base64 string back to image bytes
         image_bytes = base64.b64decode(b64_image)
@@ -269,10 +277,10 @@ def ocr_image_base64(b64_image, lang: str = "eng", max_chars: int = 4000) -> str
         return f"Error during OCR: {str(e)}"
 
 def ocr_screen(
-    region=None, 
-    scale=0.6, 
-    lang="eng", 
-    max_chars=4000
+    region: Optional[Tuple[int, int, int, int]] = None, 
+    scale: float = DEFAULT_SCREENSHOT_SCALE, 
+    lang: str = DEFAULT_OCR_LANGUAGE, 
+    max_chars: int = TRUNCATION_LIMITS["ocr"]
 ) -> str:
     """Captures a screenshot of the screenand performs OCR on it.
     This is a connector function that combines capture_screenshot and ocr_image for convenience."""

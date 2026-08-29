@@ -2,21 +2,31 @@ import requests
 import json
 import re
 
+from config import OLLAMA_API_URL, OLLAMA_TIMEOUT
 
-def call_ollama(messages: list, model: str = "qwen2.5:7b") -> str:
+
+def call_ollama(messages: list, model: str = "qwen2.5:7b", timeout: int = None) -> str:
     """Call a local Ollama-compatible REST API and return assistant text content.
+
+    Args:
+        messages: List of message dicts with 'role' and 'content' keys
+        model: Model name to use (e.g., 'qwen2.5:7b')
+        timeout: Request timeout in seconds (defaults to OLLAMA_TIMEOUT from config)
 
     Raises a RuntimeError when the HTTP call fails or the response is unexpected.
     """
+    if timeout is None:
+        timeout = OLLAMA_TIMEOUT
+    
     resp = requests.post(
-        "http://localhost:11434/api/chat",
+        OLLAMA_API_URL,
         json={
             "model": model,
             "messages": messages,
             "stream": False,
             "options": {"temperature": 0.0}
         },
-        timeout=300
+        timeout=timeout
     )
     resp.raise_for_status()
     data = resp.json()

@@ -1,14 +1,14 @@
 # System Architecture
 
 This document describes the current `local-slm` architecture as implemented in
-`agentv2.py`, `fs_tools.py`, and `ollama_client.py`.
+`agent.py`, `fs_tools.py`, `ollama_client.py`, and `config.py`.
 
 ## 1. End-to-end system flow
 
 ```mermaid
 flowchart TD
     U[User input] --> A[run_agent]
-    A --> M[Merge DEFAULT_MODELS<br/>with model overrides]
+    A --> M[Load config values<br/>DEFAULT_MODELS, MAX_AGENT_ITERATIONS]
     M --> P[Build planner messages]
     P --> L[Planner model<br/>qwen2.5:7b]
     L --> R[Raw assistant response]
@@ -30,7 +30,7 @@ flowchart TD
     VS --> FB
 
     FB --> B[Append tool feedback<br/>to planner messages]
-    B --> I{Fewer than 5 iterations?}
+    B --> I{Fewer than MAX_AGENT_ITERATIONS?}
     I -->|Yes| L
     I -->|No| Z[Return iteration-limit message]
     O --> UO[User-visible output]
@@ -42,7 +42,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant User
-    participant Agent as agentv2.py
+    participant Agent as agent.py
     participant Planner as Ollama planner
     participant Parser as extract_tool_call
     participant Registry as TOOL_REGISTRY
@@ -273,9 +273,42 @@ flowchart LR
     Tesseract --> Executable[Tesseract executable]
 ```
 
-The Ollama server must provide the configured planner/text and vision models.
-OCR additionally requires the Tesseract executable at:
+The Ollama server must provide the configured planner/text and vision models
+(configurable via environment variables).
+
+OCR additionally requires the Tesseract executable. The default location is:
 
 ```text
 C:\Program Files\Tesseract-OCR\tesseract.exe
 ```
+
+This can be overridden via the `TESSERACT_PATH` environment variable in `config.py`.
+
+## 6. Configuration Management
+
+All configuration values are centralized in `config.py` and can be overridden via environment variables:
+
+```mermaid
+flowchart TD
+    Config[config.py<br/>Default values]
+    Env[Environment Variables]
+    
+    Config -->|WORKSPACE_DIR| WS[Workspace path]
+    Config -->|TESSERACT_PATH| TP[Tesseract path]
+    Config -->|OLLAMA_API_URL| API[Ollama endpoint]
+    Config -->|OLLAMA_TIMEOUT| TO[API timeout]
+    Config -->|MODEL_PLANNER| MP[Planner model]
+    Config -->|MODEL_TEXT| MT[Text model]
+    Config -->|MODEL_VISION| MV[Vision model]
+    Config -->|TRUNCATE_*_CHARS| TR[Truncation limits]
+    Config -->|MAX_AGENT_ITERATIONS| MAI[Iteration limit]
+    Config -->|SEARCH_MAX_RESULTS| SMR[Search limit]
+    
+    Env -->|Override| Config
+    
+    Config --> Agent[agent.py]
+    Config --> Tools[fs_tools.py]
+    Config --> Client[ollama_client.py]
+```
+
+All defaults are defined in `config.py` and can be customized via environment variables without code changes.

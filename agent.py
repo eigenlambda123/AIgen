@@ -1,16 +1,17 @@
 import json
 import inspect
 import re
+import logging
 from typing import Any, Dict, Tuple
 
 from fs_tools import TOOL_REGISTRY, TOOL_CAPABILITY
 from ollama_client import call_ollama, extract_tool_call
+from config import DEFAULT_MODELS, MAX_AGENT_ITERATIONS
 
-DEFAULT_MODELS = {
-    "planner": "qwen2.5:7b",   # decides tools and composes final answer
-    "text": "qwen2.5:7b",      # text specialist
-    "vision": "qwen2.5vl:7b",  # screenshot/image interpretation
-}
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
+
 
 # dynamic tool schema & system prompt construction
 def generate_planner_prompt() -> str:
@@ -64,7 +65,7 @@ def build_tool_feedback(
     """Builds a message for the model based on the tool's output and the user's query."""
     capability = get_tool_capability(tool_name)
     routed_model = get_model_for_capability(capability, models)
-    print(f"[Model Router] tool={tool_name} capability={capability} model={routed_model}")
+    logger.debug(f"[Model Router] tool={tool_name} capability={capability} model={routed_model}")
 
     if capability == "vision":
         if isinstance(tool_result, str) and tool_result.startswith("Error:"):
@@ -108,12 +109,12 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
         {"role": "user", "content": user_query}
     ]
 
-    print(f"User Question: {user_query}\n")
+    logger.info(f"User Question: {user_query}")
     
    # ReAct loop (max 5 iterations to prevent infinite loops)
-    for _ in range(5):
+    for _ in range(MAX_AGENT_ITERATIONS):
         planner_model = get_model_for_capability("planner", models)
-        print(f"[Model Router] planner -> {planner_model}")
+        logger.debug(f"[Model Router] planner -> {planner_model}")
         raw_response = call_ollama(planner_messages, model=planner_model).strip()
         planner_messages.append({"role": "assistant", "content": raw_response})
 
@@ -128,9 +129,9 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
         if not ok:
             return raw_response
 
-        print(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")
+        logger.info(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")
         tool_result = TOOL_REGISTRY[tool_name](**tool_args)
-        print(f"[Tool Output]\n{tool_result}\n")
+        logger.debug(f"[Tool Output]\n{tool_result}")
 
         feedback = build_tool_feedback(
             tool_name,
@@ -139,7 +140,7 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
             models
         )
 
-        print(f"[Tool Output]\n{feedback}\n")
+        logger.debug(f"[Tool Feedback]\n{feedback}")
         planner_messages.append({"role": "user", "content": feedback})
 
     return "Agent exceeded maximum iteration steps."
