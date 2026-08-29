@@ -100,6 +100,7 @@ flowchart TD
     R[TOOL_REGISTRY] --> FS[list_directory]
     R --> RF[read_file]
     R --> RP[read_pdf]
+    R --> SF[search_files]
     R --> CS[capture_screenshot]
     R --> OI[ocr_image_base64]
     R --> OS[ocr_screen]
@@ -107,6 +108,7 @@ flowchart TD
     FS --> B[BASE_DIR]
     RF --> B
     RP --> B
+    SF --> B
     B --> G[_get_safe_path]
     G --> S[Resolved path must remain<br/>inside workspace]
 
@@ -180,7 +182,29 @@ flowchart LR
     Notice --> Output
 ```
 
-### 4.4 `capture_screenshot`
+### 4.4 `search_files`
+
+```mermaid
+flowchart LR
+    Input[relative_path, query,<br/>file_types, max_results] --> Safe[_get_safe_path]
+    Safe --> CheckDir{Directory exists and is valid?}
+    CheckDir -->|No| Error[Return directory error]
+    CheckDir -->|Yes| Query{Query non-empty?}
+    Query -->|No| Empty[Return empty-query error]
+    Query -->|Yes| Walk[Recursively walk files]
+    Walk --> Filter{Extension matches filter?}
+    Filter -->|No| Skip[Skip file]
+    Filter -->|Yes| Read[Read file content]
+    Read --> Match{Query found?}
+    Match -->|No| Skip
+    Match -->|Yes| Lines[Collect matching line numbers]
+    Lines --> Add[Append file path + lines]
+    Add --> Limit{Reached max_results?}
+    Limit -->|No| Walk
+    Limit -->|Yes| Output[Return matching summary]
+```
+
+### 4.5 `capture_screenshot`
 
 ```mermaid
 flowchart LR
@@ -204,7 +228,7 @@ flowchart LR
     Format -->|No| Raw[Return raw bytes]
 ```
 
-### 4.5 `ocr_image_base64`
+### 4.6 `ocr_image_base64`
 
 ```mermaid
 flowchart LR
@@ -225,7 +249,7 @@ flowchart LR
     Notice --> Output
 ```
 
-### 4.6 `ocr_screen`
+### 4.7 `ocr_screen`
 
 ```mermaid
 flowchart LR

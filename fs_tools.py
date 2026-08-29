@@ -106,6 +106,86 @@ def read_pdf(relative_path: str) -> str:
     except Exception as e:
         return f"Error reading PDF: {str(e)}"
 
+def search_files(
+    relative_path: str, 
+    query: str = "",
+    file_types: list[str] | None = None,
+    max_results: int = 20,
+    case_sensitive: bool = False    
+) -> str:
+    """
+    Searches for a query string in files under a specified workplace directory.
+    Args:
+        relative_path: The workplace directory to search in.
+        query: The string to search for in files.
+        file_types: Optional list of file extensions to filter by (e.g., ['.txt', '.md']).
+        max_results: Maximum number of matching files to return.
+        case_sensitive: Whether the search should be case-sensitive.
+    Returns:
+        A string listing matching files and line numbers, or an error message.
+    """
+    try:
+        if not query:
+            return "Error: Search query cannot be empty."
+
+        # get the safe path and validate it
+        root = _get_safe_path(relative_path)
+        if not root.exists():
+            return f"Error: Directory '{relative_path}' does not exist."
+        if not root.is_dir():
+            return f"Error: '{relative_path}' is a file, not a directory."
+        
+        # set default file types if none provided
+        if file_types is None:
+            file_types = [".txt", ".md", ".py", ".json", ".csv", ".log"]
+
+        # walk the directory tree and search for matching files
+        search_query = query if case_sensitive else query.lower()
+        matches = []
+        # use rglob to recursively find files matching the specified types
+        for file_path in root.rglob("*"):
+            if not file_path.is_file():
+                continue
+            # check file type filter
+            ext = file_path.suffix.lower()
+            if ext not in {t.lower() for t in file_types}:
+                continue
+
+            try:
+                # read the file content
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+            except Exception:
+                continue  # skip files that can't be read
+
+            # check if the search query is in the content
+            haystack = content if case_sensitive else content.lower()
+            if search_query not in haystack:
+                continue
+
+            # if we have a match, record the file path and line numbers
+            lines = content.splitlines()
+            hit_lines = []
+            for i, line in enumerate(lines, start=1):
+                line_text = line if case_sensitive else line.lower()
+                if search_query in line_text:
+                    hit_lines.append(str(i))  # store line numbers (1-based)
+
+            # if we have hits, add to matches (records the matches we found)
+            if hit_lines:
+                relative_file_path = str(file_path.relative_to(root))
+                matches.append(f"[{relative_file_path}] Lines: {', '.join(hit_lines)}")
+
+        # if no matches found
+        if not matches:
+            return f"No matches found for query '{query}' in directory '{relative_path}'."
+
+        
+        return "\n".join(matches[:max_results])
+
+    except Exception as e:
+        return f"Error during search: {str(e)}"
+
 
 # screenshot and OCR tools
 def capture_screenshot(region=None, scale=0.6, as_base64=True, jpg_quality=80):
@@ -208,6 +288,7 @@ TOOL_REGISTRY = {
     'read_file': read_file,
     'list_directory': list_directory,
     'read_pdf': read_pdf,
+    'search_files': search_files,
     'capture_screenshot': capture_screenshot,
     'ocr_image_base64': ocr_image_base64,
     'ocr_screen': ocr_screen,
@@ -218,6 +299,7 @@ TOOL_CAPABILITY = {
     "list_directory": "text",
     "read_file": "text",
     "read_pdf": "text",
+    "search_files": "text",
     "capture_screenshot": "vision",
     "ocr_image_base64": "text",
     "ocr_screen": "text",

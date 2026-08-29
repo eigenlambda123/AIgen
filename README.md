@@ -25,6 +25,7 @@ All tools operate through the registry in `fs_tools.py`.
 | `list_directory` | Text | Lists files and folders under the configured workspace |
 | `read_file` | Text | Reads text files, truncating output over 3,000 characters |
 | `read_pdf` | Text | Extracts PDF page text, truncating output over 8,000 characters |
+| `search_files` | Text | Recursively searches files for a query and reports matching file paths and line numbers |
 | `capture_screenshot` | Vision | Captures a monitor or selected screen region as base64 JPEG |
 | `ocr_image_base64` | Text | Extracts text from a base64-encoded image using Tesseract |
 | `ocr_screen` | Text | Captures the screen and performs OCR as a convenience operation |
