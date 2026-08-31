@@ -337,3 +337,30 @@ class TestOCRImageBase64:
                     result = ocr_image_base64(fake_image_data)
                     assert "No text detected" in result or "Error" not in result
 
+
+# ============================================================================
+# Tests for ocr_screen (integration test)
+# ============================================================================
+
+class TestOcrScreen:
+    """Test cases for the ocr_screen tool to ensure correct screen text extraction behavior."""
+
+    @patch('fs_tools.ocr_image_base64')
+    @patch('fs_tools.capture_screenshot')
+    def test_ocr_screen_success(self, mock_capture, mock_ocr):
+        """Verify that ocr_screen returns extracted text when screenshot and OCR are successful."""
+
+        # mock screenshot capture and OCR result
+        mock_capture.return_value = "fake_base64_image"
+        mock_ocr.return_value = "Text from screen"
+        
+        result = ocr_screen()
+        assert "Text from screen" in result
+
+    @patch('fs_tools.capture_screenshot')
+    def test_ocr_screen_capture_error(self, mock_capture):
+        """Verify that ocr_screen propagates errors from screenshot capture."""
+        mock_capture.return_value = "Error: Screenshot failed"
+        
+        result = ocr_screen()
+        assert "Error" in result
