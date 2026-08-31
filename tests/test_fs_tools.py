@@ -99,6 +99,7 @@ class TestListDirectory:
 # ============================================================================
 
 class TestReadFile:
+    """Test cases for the read_file tool to ensure correct file reading behavior."""
 
     def test_read_file_success(self, temp_workspace, monkeypatch, sample_text_file):
         """Verify that reading a valid text file returns its content, otherwise returns an error message.""" 
@@ -132,3 +133,43 @@ class TestReadFile:
         (temp_workspace / "mydir").mkdir()
         result = read_file("mydir")
         assert "Error" in result or "not a file" in result
+
+
+# ============================================================================
+# Tests for read_pdf
+# ============================================================================
+
+class TestReadPDF:
+    """Test cases for the read_pdf tool to ensure correct PDF reading behavior."""
+
+    def test_read_pdf_nonexistent(self, temp_workspace, monkeypatch):
+        """Verify that reading a non-existent PDF file returns an error."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        result = read_pdf("nonexistent.pdf")
+        assert "Error" in result or "not found" in result
+
+    def test_read_pdf_wrong_extension(self, temp_workspace, monkeypatch):
+        """Verify that reading a file with a non-PDF extension returns an error."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # create a text file instead of a PDF
+        (temp_workspace / "not_a_pdf.txt").write_text("This is not a PDF.")
+        result = read_pdf("not_a_pdf.txt")
+        assert "Error" in result or "not a PDF" in result
+
+    @patch("fs_tools.PdfReader")
+    def test_read_pdf_success(self, mock_pdf_reader, temp_workspace, monkeypatch):
+        """Verify successful PDF reading with mock PDFReader."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # create a dummy PDF file
+        (temp_workspace / "dummy.pdf").write_bytes(b"%PDF-1.4\n%Dummy PDF content")
+
+        # mock the PDFReader to simulate reading a PDF file
+        mock_page = MagicMock()
+        mock_page.extract_text.return_value = "Mocked PDF content"
+        mock_pdf_reader.return_value.pages = [mock_page]
+
+        result = read_pdf("dummy.pdf")
+        assert "Mocked PDF content" in result
