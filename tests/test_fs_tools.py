@@ -92,3 +92,43 @@ class TestListDirectory:
 
         result = list_directory(f"{sample_text_file.name}")
         assert "Error" in result or "not a directory" in result
+
+
+# ============================================================================
+# Tests for read_file
+# ============================================================================
+
+class TestReadFile:
+
+    def test_read_file_success(self, temp_workspace, monkeypatch, sample_text_file):
+        """Verify that reading a valid text file returns its content, otherwise returns an error message.""" 
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # read the sample text file
+        result = read_file("sample.txt")
+        assert "sample text file" in result
+        assert "Error" not in result
+
+    def test_read_file_truncation(self, temp_workspace, monkeypatch, sample_large_file):
+        """Verify that reading a large file triggers truncation and returns a truncated message."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        result = read_file("large_file.txt")
+        assert "Truncated" in result
+        assert len(result) <= 5000 # should be truncated to 3000 + some extra text for truncation message
+
+    def test_read_file_nonexistent(self, temp_workspace, monkeypatch):
+        """Verify that reading a non-existent file returns an error."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        result = read_file("nonexistent.txt")
+        assert "Error" in result or "not found" in result
+
+    def test_read_file_directory_error(self, temp_workspace, monkeypatch):
+        """Verify that attempting to read a directory returns an error."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # create a directory instead of a file and test reading it
+        (temp_workspace / "mydir").mkdir()
+        result = read_file("mydir")
+        assert "Error" in result or "not a file" in result
