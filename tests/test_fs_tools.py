@@ -244,7 +244,7 @@ class TestSearchFiles:
 
 class TestCaptureScreenshot:
     """Test cases for the capture_screenshot tool to ensure correct screenshot capturing behavior."""
-    
+
     @patch("fs_tools.mss")
     @patch("fs_tools.cv2.imencode")
     @patch("fs_tools.np.array")
@@ -279,4 +279,61 @@ class TestCaptureScreenshot:
                 with patch("fs_tools.cv2.cvtColor"):
                     result = capture_screenshot()
                     assert "Error" in result or "Failed to encode" in result
+
+
+# ============================================================================
+# Tests for ocr_image_base64
+# ============================================================================
+
+
+class TestOCRImageBase64:
+    """Test cases for the ocr_image_base64 tool to ensure correct images text extraction behavior."""
+
+    @patch("fs_tools.pytesseract.image_to_string")
+    @patch("fs_tools.Image.open")
+    def test_ocr_image_success(self, mock_image_open, mock_ocr):
+        """Verify that ocr_image_base64 returns extracted text when successful."""
+        # mock image opening
+        mock_image = MagicMock()
+        mock_image_open.return_value.convert.return_value = mock_image
+
+        # mock OCR result
+        mock_ocr.return_value = "Mocked OCR text"
+
+        # provide a fake base64 image string
+        import base64
+        fake_image_data = base64.b64encode(b"fake_image_data").decode()
+
+        # mock cv2 and numpy functions to avoid actual image processing
+        with patch('fs_tools.cv2.cvtColor'):
+            with patch('fs_tools.np.array'):
+                with patch('fs_tools.Image.fromarray'):
+                    result = ocr_image_base64(fake_image_data)
+                    assert "Extracted text" in result or "Error" not in result
+
+    def test_ocr_image_invalid_base64(self):
+        """Verify that ocr_image_base64 handles invalid base64 input gracefully."""
+        invalid_base64 = "not_a_valid_base64_string"
+        result = ocr_image_base64(invalid_base64)
+        assert "Error" in result or "Invalid base64" in result
+
+    @patch("fs_tools.pytesseract.image_to_string")
+    @patch("fs_tools.Image.open")
+    def test_ocr_image_no_text(self, mock_image_open, mock_ocr):
+        """Verify ocr_image_base64 handling when no text is detected."""
+        # mock image opening
+        mock_image = MagicMock()
+        mock_image_open.return_value.convert.return_value = mock_image
+        mock_ocr.return_value = "" # no text detected
+
+        # provide a fake base64 image string
+        import base64
+        fake_image_data = base64.b64encode(b"fake_image_bytes").decode()
+    
+        # mock cv2 and numpy functions to avoid actual image processing
+        with patch('fs_tools.cv2.cvtColor'):
+            with patch('fs_tools.np.array'):
+                with patch('fs_tools.Image.fromarray'):
+                    result = ocr_image_base64(fake_image_data)
+                    assert "No text detected" in result or "Error" not in result
 
