@@ -108,11 +108,11 @@ def read_pdf(relative_path: str) -> str:
 
 
 def search_files(
-    relative_path: str, 
+    relative_path: str,
     query: str = "",
-    file_types: Optional[list[str]] = None,
+    file_types: Optional[Union[str, list[str]]] = None,
     max_results: int = SEARCH_MAX_RESULTS,
-    case_sensitive: bool = False    
+    case_sensitive: bool = False
 ) -> str:
     """
     Searches for a query string in files under a specified workplace directory.
@@ -139,6 +139,10 @@ def search_files(
         # set default file types if none provided
         if file_types is None:
             file_types = [".txt", ".md", ".py", ".json", ".csv", ".log"]
+        elif isinstance(file_types, str):
+            file_types = [file_types]
+
+        normalized_types = {t.lower() for t in file_types if isinstance(t, str) and t}
 
         # walk the directory tree and search for matching files
         search_query = query if case_sensitive else query.lower()
@@ -149,7 +153,7 @@ def search_files(
                 continue
             # check file type filter
             ext = file_path.suffix.lower()
-            if ext not in {t.lower() for t in file_types}:
+            if ext not in normalized_types:
                 continue
 
             try:

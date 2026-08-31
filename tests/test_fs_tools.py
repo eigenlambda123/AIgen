@@ -173,3 +173,67 @@ class TestReadPDF:
 
         result = read_pdf("dummy.pdf")
         assert "Mocked PDF content" in result
+
+
+# ============================================================================
+# Tests for search_files
+# ============================================================================
+
+class TestSearchFiles:
+    """Test cases for the search_files tool to ensure correct file searching behavior."""
+
+    def test_search_files_empty_query(self, temp_workspace, monkeypatch):
+        """Verify that searching with an empty query returns an error."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        result = search_files(".", query="")
+        assert "Error" in result or "cannot be empty" in result
+
+    def test_search_files_no_matches(self, temp_workspace, monkeypatch):
+        """Verify 'No matches' when searching for a query that does not exist in any files.""" 
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # create a file with content that does not match the search query
+        (temp_workspace / "file1.txt").write_text("This is a test file.")
+        result = search_files(".", query="nonexistent")
+        assert "No matches" in result or "not found" in result
+
+    def test_search_files_found(self, temp_workspace, monkeypatch):
+        """Verify that searching for a query that exists in a file returns the correct match information."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # create a file with content that matches the search query
+        (temp_workspace / "file1.txt").write_text("This is a test file.")
+        result = search_files(".", query="test")
+        assert "file1.txt" in result
+        assert "Line" in result or "1" in result  # should indicate line number of match
+
+    def test_search_files_case_sensitive(self, temp_workspace, monkeypatch):
+        """Verify that the search is case-insensitive by default."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # create a file with mixed case content
+        (temp_workspace / "file1.txt").write_text("This is a Test file.")
+        result = search_files(".", query="test")
+        assert "file1.txt" in result
+
+    def test_search_files_case_sensitive_option(self, temp_workspace, monkeypatch):
+        """Verify that the search respects the case_sensitive option when set to True."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # create a file with mixed case content
+        (temp_workspace / "file1.txt").write_text("This is a Test file.")
+        result = search_files(".", query="test", case_sensitive=True)
+        assert "No matches" in result or "not found" in result
+
+    def test_search_files_filter_by_type(self, temp_workspace, monkeypatch):
+        """Verify that the search can filter results by file type."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # create files with different extensions/types
+        (temp_workspace / "file1.txt").write_text("This is a test file.")
+        (temp_workspace / "file2.py").write_text("print('Hello')")
+        result = search_files(".", query="test", file_types=".txt")
+        assert "file1.txt" in result
+        assert "file2.py" not in result
+
