@@ -19,7 +19,8 @@ from fs_tools import (
 # Tests for _get_safe_path (path sandboxing security function)
 # ============================================================================
 
-class TestGetSafePath:
+class TestGetSafePath:  
+    """Test cases for the _get_safe_path function to ensure path security and sandboxing."""
 
     def test_safe_path_inside_workspace(self, temp_workspace, monkeypatch):
         """Verify that valid paths inside the workspace are returned correctly."""
@@ -46,3 +47,48 @@ class TestGetSafePath:
 
         with pytest.raises(PermissionError):
             _get_safe_path("C:\\Windows\\System32")
+
+
+# ============================================================================
+# Tests for list_directory
+# ============================================================================
+
+class TestListDirectory:
+    """Test cases for the list_directory tool to ensure correct directory listing behavior."""
+
+    def test_list_directory_empty(self, temp_workspace, monkeypatch):
+        """Test listing an empty directory."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        result = list_directory(".")
+        assert "empty" in result.lower()
+
+    def test_list_directory_with_files(self, temp_workspace, monkeypatch):
+        """Verify that files and directories are listed correctly."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # Create some files and directories
+        (temp_workspace / "file1.txt").write_text("File 1 content")
+        (temp_workspace / "file2.py").write_text("File 2 content")
+        (temp_workspace / "subdir").mkdir()
+
+        result = list_directory(".")
+        assert "file1.txt" in result
+        assert "file2.py" in result
+        assert "subdir" in result
+        assert "[FILE]" in result or "[DIR]" in result
+
+    def test_list_directory_nonexistent(self, temp_workspace, monkeypatch):
+        """Verify that listing a non-existent directory returns an error message."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        # Test listing a non-existent directory
+        result = list_directory("nonexistent_dir")
+        assert "Error" in result or "not found" in result
+
+    def test_list_directory_file_path(self, temp_workspace, monkeypatch, sample_text_file):
+        """Verify error when treating a file path as a directory."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        result = list_directory(f"{sample_text_file.name}")
+        assert "Error" in result or "not a directory" in result
