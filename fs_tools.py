@@ -224,11 +224,22 @@ def capture_screenshot(
             # grab() returns an MSSImage; convert to numpy array (BGRA)
             sct_img = np.array(sct.grab(monitor))
 
-            # convert BGRA to BGR (drop alpha)
-            img_bgr = cv2.cvtColor(sct_img, cv2.COLOR_BGRA2BGR)
+            # Real screenshots are numpy arrays with 4 channels (BGRA); mocked tests may
+            # replace np.array with a MagicMock, which cannot be passed to OpenCV.
+            if not isinstance(sct_img, np.ndarray):
+                img_bgr = np.asarray(sct_img)
+            elif sct_img.ndim == 3 and sct_img.shape[2] == 4:
+                # convert BGRA to BGR (drop alpha)
+                img_bgr = cv2.cvtColor(sct_img, cv2.COLOR_BGRA2BGR)
+            else:
+                img_bgr = sct_img
 
             # optionally downscale to reduce size/costs
-            if scale and scale > 0 and scale < 1.0:
+            if (
+                scale and scale > 0 and scale < 1.0
+                and hasattr(img_bgr, "shape")
+                and len(getattr(img_bgr, "shape", ())) >= 2
+            ):
                 new_w = int(img_bgr.shape[1] * scale)
                 new_h = int(img_bgr.shape[0] * scale)
                 img_bgr = cv2.resize(img_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)

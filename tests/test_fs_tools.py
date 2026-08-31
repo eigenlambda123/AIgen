@@ -237,3 +237,46 @@ class TestSearchFiles:
         assert "file1.txt" in result
         assert "file2.py" not in result
 
+
+# ============================================================================
+# Tests for capture_screenshot (with mocking)
+# ============================================================================
+
+class TestCaptureScreenshot:
+    """Test cases for the capture_screenshot tool to ensure correct screenshot capturing behavior."""
+    
+    @patch("fs_tools.mss")
+    @patch("fs_tools.cv2.imencode")
+    @patch("fs_tools.np.array")
+    def test_capture_screenshot_success(self, mock_array, mock_imencode, mock_mss):
+        """Verify that capture_screenshot returns a base64 string when successful."""
+        # mock screenshot capture
+        mock_screen = MagicMock()
+        mock_screen.grab.return_value = MagicMock()
+        mock_mss.return_value.__enter__.return_value = mock_screen
+        mock_mss.return_value.__enter__.return_value.monitors = [None, {"left": 0, "top": 0}]
+
+        # mock array and image encoding
+        mock_array.return_value = MagicMock()
+        mock_imencode.return_value = (True,  MagicMock(tobytes=lambda: b"fake_image"))
+
+        result = capture_screenshot(as_base64=True)
+        assert isinstance(result, str) and len(result) > 0  # should return a base64 string
+        assert "Error" not in result
+
+    @patch("fs_tools.mss")
+    def test_capture_screenshot_encode_failure(self, mock_mss):
+        """Verify that capture_screenshot handles encoding failure gracefully."""
+        # mock screenshot capture
+        mock_screen = MagicMock()
+        mock_screen.grab.return_value = MagicMock()
+        mock_mss.return_value.__enter__.return_value = mock_screen
+        mock_mss.return_value.__enter__.return_value.monitors = [None, {"left": 0, "top": 0}]
+
+        # mock cv2.imencode to simulate failure
+        with patch("fs_tools.cv2.imencode", return_value=(False, None)):
+            with patch("fs_tools.np.array"):
+                with patch("fs_tools.cv2.cvtColor"):
+                    result = capture_screenshot()
+                    assert "Error" in result or "Failed to encode" in result
+
