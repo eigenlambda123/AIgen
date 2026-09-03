@@ -62,7 +62,7 @@ class TestExtractTollCall:
 
 
 class TestCallOllama:
-   """Test cases for the call_ollama function in ollama_client.py.""" 
+    """Test cases for the call_ollama function in ollama_client.py."""
 
     @patch("ollama_client.requests.post")
     def test_call_ollama_success(self, mock_post):
