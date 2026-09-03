@@ -1,8 +1,8 @@
-#local-slm
+# ΛIgen
 
 ## Overview
 
-`local-slm` is a local, self-contained implementation of a small language model (SLM) agent that can use a set of tools to perform tasks on the local machine. It is designed to run without requiring internet access, relying on locally available models and tools.
+`ΛIgen` is a local, self-contained implementation of a small language model (SLM) agent that can use a set of tools to perform tasks on the local machine. It is designed to run without requiring internet access, relying on locally available models and tools.
 
 ## Configuration
 
