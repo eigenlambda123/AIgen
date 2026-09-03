@@ -1,6 +1,6 @@
 # System Architecture
 
-This document describes the current `local-slm` architecture as implemented in
+This document describes the current `ΛIgen` architecture as implemented in
 `agent.py`, `fs_tools.py`, `ollama_client.py`, and `config.py`.
 
 ## 1. End-to-end system flow
