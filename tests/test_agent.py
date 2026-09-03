@@ -65,3 +65,55 @@ def test_build_tool_feedback_text(mock_call_ollama):
 
     assert result == "Tool output from 'read_file': sample content"
     mock_call_ollama.assert_not_called()
+
+
+@patch("agent.call_ollama")
+def test_build_tool_feedback_vision(mock_call_ollama):
+    """Verify vision tools route images to the configured vision model."""
+    mock_call_ollama.return_value = "A screenshot showing a terminal window."
+
+    result = build_tool_feedback(
+        "capture_screenshot",
+        "base64-image-data",
+        "Describe what is on my screen",
+        {
+            "planner": "planner-model",
+            "text": "text-model",
+            "vision": "vision-model",
+        },
+    )
+
+    assert result == (
+        "Tool output from 'capture_screenshot' "
+        "(vision interpretation): A screenshot showing a terminal window."
+    )
+
+    mock_call_ollama.assert_called_once()
+
+    call_args = mock_call_ollama.call_args
+    messages = call_args.args[0]
+
+    assert call_args.kwargs["model"] == "vision-model"
+    assert messages[0]["role"] == "system"
+    assert messages[1]["role"] == "user"
+    assert messages[1]["content"] == "User request: Describe what is on my screen"
+    assert messages[1]["images"] == ["base64-image-data"]
+
+
+@patch("agent.call_ollama")
+def test_build_tool_feedback_vision_error_does_not_call_model(mock_call_ollama):
+    """Verify screenshot errors are returned without invoking the vision model."""
+    result = build_tool_feedback(
+        "capture_screenshot",
+        "Error: Screenshot failed",
+        "Describe what is on my screen",
+        {
+            "planner": "planner-model",
+            "vision": "vision-model",
+        },
+    )
+
+    assert result == (
+        "Tool output from 'capture_screenshot': Error: Screenshot failed"
+    )
+    mock_call_ollama.assert_not_called()
