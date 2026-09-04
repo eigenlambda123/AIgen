@@ -126,6 +126,15 @@ def search_files(
         A string listing matching files and line numbers, or an error message.
     """
     try:
+        # validate input types and values
+        if not isinstance(relative_path, str):
+            return "Error: relative_path must be a string."
+        if not isinstance(query, str):
+            return "Error: query must be a string."
+        if not isinstance(max_results, int) or isinstance(max_results, bool):
+            return "Error: max_results must be an integer."
+        if max_results < 1:
+            return "Error: max_results must be greater than zero."
         if not query:
             return "Error: Search query cannot be empty."
 
@@ -214,6 +223,30 @@ def capture_screenshot(
     """ 
 
     try:
+        # validate input types and values
+        if not isinstance(scale, (int, float)) or isinstance(scale, bool):
+            return "Error: scale must be a number."
+        if not 0 < scale <= 1:
+            return "Error: scale must be greater than 0 and no greater than 1."
+        if not isinstance(jpg_quality, int) or isinstance(jpg_quality, bool):
+            return "Error: jpg_quality must be an integer."
+        if not 1 <= jpg_quality <= 100:
+            return "Error: jpg_quality must be between 1 and 100."
+        if region is not None:
+            if (
+                not isinstance(region, tuple)
+                or len(region) != 4
+                or not all(isinstance(value, int) for value in region)
+            ):
+                return (
+                    "Error: region must be a tuple of four integers "
+                    "(left, top, width, height)."
+                )
+
+            left, top, width, height = region
+            if width <= 0 or height <= 0:
+                return "Error: region width and height must be greater than zero."
+        
         with mss() as sct:
             # choose monitor 1 (primary). If region provided, override monitor dict
             monitor = sct.monitors[1]
@@ -261,8 +294,17 @@ def capture_screenshot(
 
 def ocr_image_base64(b64_image: str, lang: str = "eng", max_chars: Optional[int] = None) -> str:
     """Extracts text from a base64-encoded image using Tesseract OCR."""
+    # validate input types and values
     if max_chars is None:
         max_chars = TRUNCATION_LIMITS["ocr"]
+    if not isinstance(b64_image, str) or not b64_image:
+        return "Error: b64_image must be a non-empty string."
+    if max_chars is not None:
+        if not isinstance(max_chars, int) or isinstance(max_chars, bool):
+            return "Error: max_chars must be an integer."
+        if max_chars < 1:
+            return "Error: max_chars must be greater than zero."
+
     try:
         # convert the base64 string back to image bytes
         image_bytes = base64.b64decode(b64_image)
@@ -299,6 +341,8 @@ def ocr_screen(
 ) -> str:
     """Captures a screenshot of the screenand performs OCR on it.
     This is a connector function that combines capture_screenshot and ocr_image for convenience."""
+    if max_chars < 1:
+        return "Error: max_chars must be greater than zero."
     screenshot = capture_screenshot(region=region, scale=scale, as_base64=True)
 
     if isinstance(screenshot, str) and screenshot.startswith("Error:"):

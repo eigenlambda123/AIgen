@@ -237,6 +237,14 @@ class TestSearchFiles:
         assert "file1.txt" in result
         assert "file2.py" not in result
 
+    def test_search_files_rejects_invalid_max_results(self, temp_workspace, monkeypatch):
+        """Verify that search_files rejects invalid max_results values and returns an error message."""
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        result = search_files(".", query="test", max_results=0)
+
+        assert result == "Error: max_results must be greater than zero."
+
 
 # ============================================================================
 # Tests for capture_screenshot (with mocking)
@@ -279,6 +287,31 @@ class TestCaptureScreenshot:
                 with patch("fs_tools.cv2.cvtColor"):
                     result = capture_screenshot()
                     assert "Error" in result or "Failed to encode" in result
+
+    def test_capture_screenshot_rejects_invalid_scale(self):
+        """Verify that capture_screenshot rejects invalid scale values and returns an error message."""
+        result = capture_screenshot(scale=2)
+        assert result == "Error: scale must be greater than 0 and no greater than 1."
+
+    def test_capture_screenshot_rejects_invalid_jpeg_quality(self):
+        """Verify that capture_screenshot rejects invalid JPEG quality values and returns an error message."""
+        result = capture_screenshot(jpg_quality=101)
+        assert result == "Error: jpg_quality must be between 1 and 100."
+
+    def test_capture_screenshot_rejects_invalid_region(self):
+        """Verify that capture_screenshot rejects invalid region values and returns an error message."""
+        result = capture_screenshot(region=(0, 0, -100, 200))
+        assert result == "Error: region width and height must be greater than zero."
+
+    def test_ocr_image_rejects_empty_image(self):
+        """Verify that ocr_image_base64 rejects empty base64 image strings and returns an error message."""
+        result = ocr_image_base64("")
+        assert result == "Error: b64_image must be a non-empty string."
+
+    def test_ocr_image_rejects_invalid_max_chars(self):
+        """Verify that ocr_image_base64 rejects invalid max_chars values and returns an error message."""
+        result = ocr_image_base64("image-data", max_chars=0)
+        assert result == "Error: max_chars must be greater than zero."
 
 
 # ============================================================================
