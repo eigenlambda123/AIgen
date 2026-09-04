@@ -13,8 +13,12 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 
-# dynamic tool schema & system prompt construction
 def generate_planner_prompt() -> str:
+    """Build the system prompt describing available tools and call format.
+
+    Returns:
+        A prompt instructing the planner how to select tools and respond.
+    """
     tool_descriptions = []
     for name, func in TOOL_REGISTRY.items():
         doc = func.__doc__ or "No description available."
@@ -42,19 +46,45 @@ INSTRUCTIONS:
 
 
 def generate_capability_prompt(capability: str) -> str:
+    """Return the system prompt for a tool capability.
+
+    Args:
+        capability: Capability name, such as ``"vision"`` or ``"text"``.
+
+    Returns:
+        A capability-specific system prompt.
+    """
     if capability == "vision":
         return "You are a vision assistant. Describe exactly what is visible in the provided image."
     return "You are a helpful assistant."
 
+
 def get_tool_capability(tool_name: str) -> str:
-    # return the capability associated with a tool, defaulting to "text" if not found
+    """Return the capability associated with a registered tool.
+
+    Args:
+        tool_name: Name of the tool to look up.
+
+    Returns:
+        The configured capability, or ``"text"`` when no mapping exists.
+    """
     return TOOL_CAPABILITY.get(tool_name, "text")
 
+
 def get_model_for_capability(capability: str, models: Dict[str, str]) -> str:
-    """Returns the model name for a given capability, defaulting to the planner model if not found."""
+    """Select the model configured for a capability.
+
+    Args:
+        capability: Capability requiring a model.
+        models: Mapping of capability names to model names.
+
+    Returns:
+        The configured capability model, or the planner model as fallback.
+    """
     if capability in models:
         return models[capability]
     return models.get("planner", DEFAULT_MODELS["planner"])
+
 
 def build_tool_feedback(
     tool_name: str,
@@ -62,7 +92,23 @@ def build_tool_feedback(
     user_query: str,
     models: Dict[str, str]
 ) -> str:
-    """Builds a message for the model based on the tool's output and the user's query."""
+    """Format tool output for the planner.
+
+    Text-tool results are formatted directly. Vision-tool results are
+    sent to the configured vision model for interpretation first.
+
+    Args:
+        tool_name: Name of the executed tool.
+        tool_result: Result returned by the tool.
+        user_query: Original user request.
+        models: Mapping of capability names to model names.
+
+    Returns:
+        Feedback text to append to the planner conversation.
+
+    Raises:
+        RuntimeError: If vision interpretation fails during the Ollama call.
+    """
     capability = get_tool_capability(tool_name)
     routed_model = get_model_for_capability(capability, models)
     logger.debug(f"[Model Router] tool={tool_name} capability={capability} model={routed_model}")
@@ -85,7 +131,17 @@ def build_tool_feedback(
 
     return f"Tool output from '{tool_name}': {tool_result}"
 
+
 def validate_tool_action(action: dict) -> Tuple[bool, str, dict]:
+    """Validate a planner-produced tool action.
+
+    Args:
+        action: Parsed action containing ``tool`` and optional ``args`` keys.
+
+    Returns:
+        A tuple of ``(is_valid, tool_name, tool_args)``. Invalid actions
+        return ``False``, an empty tool name, and an empty argument dictionary.
+    """
     tool_name = action.get("tool")
     tool_args = action.get("args", {})
 
@@ -98,8 +154,18 @@ def validate_tool_action(action: dict) -> Tuple[bool, str, dict]:
 
     return True, tool_name, tool_args
 
+
 def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
-    """Runs the agent loop to process a user query, invoking tools as needed."""
+    """Run the planner/tool loop for a user request.
+
+    Args:
+        user_query: Natural-language request from the user.
+        model_overrides: Optional capability-to-model overrides.
+
+    Returns:
+        The planner's final response, the raw response for an invalid action,
+        or an iteration-limit message.
+    """
     models = dict(DEFAULT_MODELS)
     if model_overrides:
         models.update(model_overrides)
@@ -111,7 +177,7 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
 
     logger.info(f"User Question: {user_query}")
     
-   # ReAct loop (max 5 iterations to prevent infinite loops)
+    # ReAct loop (maximum iterations prevent infinite loops)
     for _ in range(MAX_AGENT_ITERATIONS):
         planner_model = get_model_for_capability("planner", models)
         logger.debug(f"[Model Router] planner -> {planner_model}")
