@@ -245,7 +245,7 @@ class TestSearchFiles:
 
         assert result == "Error: max_results must be greater than zero."
 
-        def test_search_files_logs_unreadable_file(
+    def test_search_files_logs_unreadable_file(
         self,
         temp_workspace,
         monkeypatch,

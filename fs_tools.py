@@ -35,7 +35,14 @@ def _get_safe_path(relative_path: str) -> Path:
 
 # file system tools
 def list_directory(relative_path: str = ".") -> str:
-    """List files and folders inside a specified workplace directory."""
+    """List files and folders inside the configured workspace.
+
+    Args:
+        relative_path: Workspace-relative directory path.
+
+    Returns:
+        Directory entries, an empty-directory message, or an error string.
+    """
     try:
         target_path = _get_safe_path(relative_path)
         if not target_path.exists():
@@ -58,7 +65,14 @@ def list_directory(relative_path: str = ".") -> str:
 
 
 def read_file(relative_path: str) -> str:
-    """Reads and returns the text content of a file within the workplace"""
+    """Read a text file inside the configured workspace.
+
+    Args:
+        relative_path: Workspace-relative file path.
+
+    Returns:
+        File contents, truncated according to configuration, or an error string.
+    """
     try:
         target_path = _get_safe_path(relative_path)
         if not target_path.exists():
@@ -80,7 +94,14 @@ def read_file(relative_path: str) -> str:
 
 
 def read_pdf(relative_path: str) -> str:
-    """Reads and returns the text content of a PDF file within the workplace"""
+    """Extract text from a PDF inside the configured workspace.
+
+    Args:
+        relative_path: Workspace-relative path to a PDF file.
+
+    Returns:
+        Extracted PDF text, truncated according to configuration, or an error string.
+    """
     try:
         target_path = _get_safe_path(relative_path)
         if not target_path.exists():
@@ -118,16 +139,18 @@ def search_files(
     max_results: int = SEARCH_MAX_RESULTS,
     case_sensitive: bool = False
 ) -> str:
-    """
-    Searches for a query string in files under a specified workplace directory.
+    """Search workspace files for a text query.
+
     Args:
-        relative_path: The workplace directory to search in.
-        query: The string to search for in files.
-        file_types: Optional list of file extensions to filter by (e.g., ['.txt', '.md']).
+        relative_path: Workspace-relative directory to search.
+        query: Text to search for. It must not be empty.
+        file_types: Optional extension or list of extensions to include.
         max_results: Maximum number of matching files to return.
-        case_sensitive: Whether the search should be case-sensitive.
+        case_sensitive: Whether matching should preserve letter case.
+
     Returns:
-        A string listing matching files and line numbers, or an error message.
+        Matching file paths and line numbers, a no-match message, or
+        an error string.
     """
     try:
         # validate input types and values
@@ -218,20 +241,22 @@ def capture_screenshot(
     as_base64: bool = True, 
     jpg_quality: int = DEFAULT_JPEG_QUALITY
 ) -> Union[str, bytes]:
-    """
-    Captures a screenshot of the specified region (or full screen if None) and returns it as a base64-encoded string.
-   
+    """Capture a monitor or screen region and encode it as JPEG.
+
     Args:
-        region: Optional tuple (left, top, width, height). If None, capture full primary monitor.
-        scale: Float in (0,1] to downscale the image for smaller size / faster OCR.
-        as_base64: If True return a base64-encoded PNG/JPEG string; otherwise return raw bytes.
-        jpg_quality: JPEG quality (1-100) used if returning JPEG bytes.
+        region: Optional tuple of ``(left, top, width, height)``.
+            If omitted, the primary monitor is captured.
+        scale: Resize factor between 0 and 1. Smaller values reduce
+            image size and processing cost.
+        as_base64: If True, return an ASCII base64 string. Otherwise,
+            return raw JPEG bytes.
+        jpg_quality: JPEG quality from 1 to 100.
 
     Returns:
-        On success: base64 string (if as_base64 True) or raw bytes of image.
-        On error: string beginning with "Error:" describing the problem.
-    """ 
-
+        A base64-encoded JPEG string when ``as_base64`` is True, or raw
+        JPEG bytes otherwise. Validation and capture failures are returned
+        as strings beginning with ``"Error:"``.
+    """
     try:
         # validate input types and values
         if not isinstance(scale, (int, float)) or isinstance(scale, bool):
@@ -303,7 +328,18 @@ def capture_screenshot(
 
 
 def ocr_image_base64(b64_image: str, lang: str = "eng", max_chars: Optional[int] = None) -> str:
-    """Extracts text from a base64-encoded image using Tesseract OCR."""
+    """Extract text from a base64-encoded image using Tesseract OCR.
+
+    Args:
+        b64_image: Base64-encoded image data.
+        lang: Tesseract language code, such as ``"eng"``.
+        max_chars: Maximum number of characters to return. If None,
+            the configured OCR limit is used.
+
+    Returns:
+        Extracted text, a no-text message, or an error string beginning
+        with ``"Error:"``.
+    """
     # validate input types and values
     if max_chars is None:
         max_chars = TRUNCATION_LIMITS["ocr"]
@@ -349,8 +385,18 @@ def ocr_screen(
     lang: str = DEFAULT_OCR_LANGUAGE, 
     max_chars: int = TRUNCATION_LIMITS["ocr"]
 ) -> str:
-    """Captures a screenshot of the screenand performs OCR on it.
-    This is a connector function that combines capture_screenshot and ocr_image for convenience."""
+    """Capture the screen and perform OCR.
+
+    Args:
+        region: Optional tuple of ``(left, top, width, height)``.
+        scale: Screenshot resize factor between 0 and 1.
+        lang: Tesseract language code, such as ``"eng"``.
+        max_chars: Maximum number of OCR characters to return.
+
+    Returns:
+        Extracted screen text, a no-text message, or an error string
+        beginning with ``"Error:"``.
+    """
     if max_chars < 1:
         return "Error: max_chars must be greater than zero."
     screenshot = capture_screenshot(region=region, scale=scale, as_base64=True)
