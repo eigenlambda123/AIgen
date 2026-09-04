@@ -1,19 +1,30 @@
 import requests
 import json
 import re
+from typing import Any, Optional
 
 from config import OLLAMA_API_URL, OLLAMA_TIMEOUT
 
 
-def call_ollama(messages: list, model: str = "qwen2.5:7b", timeout: int = None) -> str:
-    """Call a local Ollama-compatible REST API and return assistant text content.
+def call_ollama(
+    messages: list[dict[str, Any]],
+    model: str = "qwen2.5:7b",
+    timeout: int | None = None,
+) -> str:
+    """Send a chat request to the local Ollama API.
 
     Args:
-        messages: List of message dicts with 'role' and 'content' keys
-        model: Model name to use (e.g., 'qwen2.5:7b')
-        timeout: Request timeout in seconds (defaults to OLLAMA_TIMEOUT from config)
+        messages: Chat messages containing ``role`` and ``content`` fields.
+        model: Ollama model name to use.
+        timeout: Request timeout in seconds. If None, the configured
+            ``OLLAMA_TIMEOUT`` value is used.
 
-    Raises a RuntimeError when the HTTP call fails or the response is unexpected.
+    Returns:
+        The assistant's text response.
+
+    Raises:
+        requests.RequestException: If the HTTP request fails.
+        RuntimeError: If the response does not contain usable content.
     """
     if timeout is None:
         timeout = OLLAMA_TIMEOUT
@@ -43,8 +54,19 @@ def call_ollama(messages: list, model: str = "qwen2.5:7b", timeout: int = None) 
         raise RuntimeError("Unexpected response format from Ollama API")
 
 
-def extract_tool_call(raw_response: str):
-    """Extracts a tool call JSON object from raw model text, or returns None."""
+def extract_tool_call(raw_response: str) -> Optional[dict[str, Any]]:
+    """Extract a tool-call object from model-generated text.
+
+    The response may be plain JSON, fenced JSON, or text containing an
+    embedded JSON object.
+
+    Args:
+        raw_response: Raw text returned by the language model.
+
+    Returns:
+        A dictionary containing the extracted JSON object, or None when
+        no valid JSON object can be found.
+    """
     text = (raw_response or "").strip()
     if not text:
         return None
