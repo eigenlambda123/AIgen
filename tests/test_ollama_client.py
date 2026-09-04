@@ -1,12 +1,12 @@
-import json
 from unittest.mock import Mock, patch
 
 import pytest
 
-from config import OLLAMA_API_URL, OLLAMA_TIMEOUT
+from config import OLLAMA_API_URL
 from ollama_client import call_ollama, extract_tool_call
 
-class TestExtractTollCall:
+
+class TestExtractToolCall:
     """Test cases for the extract_tool_call function in ollama_client.py."""
 
     def test_extract_plain_json(self):
@@ -20,7 +20,6 @@ class TestExtractTollCall:
             "args": {"relative_path": "test.txt"}
         }
 
-    
     def test_extract_fenced_json(self):
         """Verify that extract_tool_call correctly extracts a JSON object from fenced code blocks."""
         response = '```json\n{"tool": "list_directory", "args": {"relative_path": "."}}\n```'
@@ -46,11 +45,14 @@ class TestExtractTollCall:
             "args": {"relative_path": "test.txt"}
         }
 
-    @pytest.mark.parametrize("response", [
-        "This is not JSON at all.",
-        '{"tool": }',
-        "```json\n{invalid json}\n```",
-    ])
+    @pytest.mark.parametrize(
+        "response",
+        [
+            "This is not JSON at all.",
+            '{"tool": }',
+            "```json\n{invalid json}\n```",
+        ],
+    )
     def test_invalid_json_returns_none(self, response):
         """Verify that extract_tool_call returns None for invalid JSON."""
         assert extract_tool_call(response) is None
@@ -67,24 +69,24 @@ class TestCallOllama:
     @patch("ollama_client.requests.post")
     def test_call_ollama_success(self, mock_post):
         """Verify that call_ollama correctly processes a successful response from the Ollama API."""
-        # mock the response from requests.post
+        # Mock the response from requests.post.
         mock_response = Mock()
         mock_response.json.return_value = {
             "message": {
                 "content": "This is a successful response."
-            }
+            },
         }
         mock_post.return_value = mock_response
 
-        # call the function
+        # Call the function.
         messages = [{"role": "user", "content": "Hello Ollama!"}]
         result = call_ollama(
             messages=messages,
             model="test-model",
-            timeout=15
+            timeout=15,
         )
 
-        # assert that the result is as expected
+        # Assert that the result is as expected.
         assert result == "This is a successful response."
         mock_post.assert_called_once_with(
             OLLAMA_API_URL,
@@ -108,7 +110,7 @@ class TestCallOllama:
         with pytest.raises(RuntimeError, match="HTTP error"):
             call_ollama(
                 messages=[{"role": "user", "content": "Hello Ollama!"}],
-                model="test-model"
+                model="test-model",
             )
 
     @patch("ollama_client.requests.post")
@@ -121,26 +123,25 @@ class TestCallOllama:
         with pytest.raises(RuntimeError, match="Unexpected response format from Ollama API"):
             call_ollama(
                 messages=[{"role": "user", "content": "Hello Ollama!"}],
-                model="test-model"
+                model="test-model",
             )
 
     @patch("ollama_client.requests.post")
     def test_fallback_content_response_format(self, mock_post):
-        """Verify that call_ollama returns fallback content when the response format is unexpected but contains a string.""" 
+        """Verify that call_ollama returns fallback content when the response format is unexpected but contains a string."""
         mock_response = Mock()
         mock_response.json.return_value = {"content": "Fallback content"}
         mock_post.return_value = mock_response
 
         result = call_ollama(
             messages=[{"role": "user", "content": "Hello Ollama!"}],
-            model="test-model"
+            model="test-model",
         )
         assert result == "Fallback content"
 
     @patch("ollama_client.requests.post")
     def test_configurable_api_url_and_default_timeout(self, mock_post, monkeypatch):
         """Verify that call_ollama uses the configured API URL and default timeout."""
-        
         monkeypatch.setattr("ollama_client.OLLAMA_API_URL", "http://mocked-ollama-api")
         monkeypatch.setattr("ollama_client.OLLAMA_TIMEOUT", 20)
 
@@ -154,7 +155,7 @@ class TestCallOllama:
 
         result = call_ollama(
             messages=[{"role": "user", "content": "Hello Ollama!"}],
-            model="test-model"
+            model="test-model",
         )
 
         assert result == "Response from mocked API."
