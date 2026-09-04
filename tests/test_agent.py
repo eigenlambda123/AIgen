@@ -54,15 +54,6 @@ class TestToolActionValidation:
         assert tool_name == "Unknown tool: 'does_not_exist'."
         assert tool_args == {}
 
-    def test_invalid_args(self):
-        """Verify that non-dictionary arguments are rejected."""
-        valid, _, _ = validate_tool_action({
-            "tool": "read_file",
-            "args": "not-a-dictionary",
-        })
-
-        assert valid is False
-
     def test_missing_tool(self):
         """Verify that missing tool names are rejected."""
         valid, tool_name, tool_args = validate_tool_action({
@@ -94,7 +85,7 @@ class TestToolActionValidation:
         assert tool_name == "read_file"
         assert tool_args == {}
 
-    def test_invalid_args(self):
+    def test_non_dictionary_args(self):
         """Verify that non-dictionary arguments are rejected."""
         valid, error_message, tool_args = validate_tool_action({
             "tool": "read_file",
@@ -202,7 +193,6 @@ class TestRunAgent:
 
         assert result == "This is the final answer."
         mock_call_ollama.assert_called_once()
-
 
     @patch("agent.call_ollama")
     def test_executes_text_tool_then_returns_final_response(self, mock_call_ollama):
