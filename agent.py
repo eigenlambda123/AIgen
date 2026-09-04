@@ -90,11 +90,11 @@ def validate_tool_action(action: dict) -> Tuple[bool, str, dict]:
     tool_args = action.get("args", {})
 
     if not isinstance(tool_name, str):
-        return False, "", {}
+        return False, "Tool name must be a string.", {}
     if tool_name not in TOOL_REGISTRY:
-        return False, "", {}
+        return False, f"Unknown tool: '{tool_name}'.", {}
     if not isinstance(tool_args, dict):
-        return False, "", {}
+        return False, "Tool arguments must be a dictionary.", {}
 
     return True, tool_name, tool_args
 
@@ -127,6 +127,7 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
         # Validate the tool action
         ok, tool_name, tool_args = validate_tool_action(action)
         if not ok:
+            logger.error("Invalid tool action: %s", tool_name)
             return raw_response
 
         logger.info(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")

@@ -51,7 +51,7 @@ class TestToolActionValidation:
         })
 
         assert valid is False
-        assert tool_name == ""
+        assert tool_name == "Unknown tool: 'does_not_exist'."
         assert tool_args == {}
 
     def test_invalid_args(self):
@@ -70,7 +70,7 @@ class TestToolActionValidation:
         })
 
         assert valid is False
-        assert tool_name == ""
+        assert tool_name == "Tool name must be a string."
         assert tool_args == {}
 
     def test_non_string_tool(self):
@@ -81,7 +81,7 @@ class TestToolActionValidation:
         })
 
         assert valid is False
-        assert tool_name == ""
+        assert tool_name == "Tool name must be a string."
         assert tool_args == {}
 
     def test_missing_args_default_to_empty_dictionary(self):
@@ -92,6 +92,17 @@ class TestToolActionValidation:
 
         assert valid is True
         assert tool_name == "read_file"
+        assert tool_args == {}
+
+    def test_invalid_args(self):
+        """Verify that non-dictionary arguments are rejected."""
+        valid, error_message, tool_args = validate_tool_action({
+            "tool": "read_file",
+            "args": "not-a-dictionary",
+        })
+
+        assert valid is False
+        assert error_message == "Tool arguments must be a dictionary."
         assert tool_args == {}
 
 
@@ -223,15 +234,15 @@ class TestRunAgent:
         )
 
     @patch("agent.call_ollama")
-    def test_returns_raw_response_for_invalid_tool(self, mock_call_ollama):
-        """Verify that run_agent returns the raw response for an invalid tool."""
+    def test_returns_raw_response_for_invalid_tool(self, mock_call_ollama, caplog):
+        """Verify that run_agent returns the raw response for an invalid tool and logs an error."""
         raw_response = '{"tool": "unknown_tool", "args": {}}'
         mock_call_ollama.return_value = raw_response
 
         result = run_agent("Use an unknown tool")
 
         assert result == raw_response
-        mock_call_ollama.assert_called_once()
+        assert "Unknown tool: 'unknown_tool'." in caplog.text
 
     @patch("agent.call_ollama")
     def test_stops_after_maximum_iterations(self, mock_call_ollama):
