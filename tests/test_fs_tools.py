@@ -245,6 +245,28 @@ class TestSearchFiles:
 
         assert result == "Error: max_results must be greater than zero."
 
+        def test_search_files_logs_unreadable_file(
+        self,
+        temp_workspace,
+        monkeypatch,
+        caplog,
+    ):
+        # verify that search_files logs a warning when it encounters an unreadable file and continues searching
+        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+
+        unreadable_file = temp_workspace / "unreadable.txt"
+        unreadable_file.write_text("secret content")
+
+        with patch(
+            "fs_tools.open",
+            side_effect=PermissionError("access denied"),
+        ), caplog.at_level("WARNING", logger="fs_tools"):
+            result = search_files(".", query="secret")
+
+        assert "No matches found" in result
+        assert "Skipping unreadable file" in caplog.text
+        assert str(unreadable_file) in caplog.text
+
 
 # ============================================================================
 # Tests for capture_screenshot (with mocking)

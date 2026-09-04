@@ -2,6 +2,7 @@ import os
 from pypdf import PdfReader
 from pathlib import Path
 from typing import Union, Optional, Tuple
+import logging
 
 import io
 import base64
@@ -16,6 +17,9 @@ from config import WORKSPACE_DIR, TESSERACT_PATH, TRUNCATION_LIMITS, SEARCH_MAX_
 
 # pytesseract configuration: use Tesseract path from config
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 # Alias BASE_DIR from config for backward compatibility
 BASE_DIR = WORKSPACE_DIR
@@ -169,8 +173,14 @@ def search_files(
                 # read the file content
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
-            except Exception:
-                continue  # skip files that can't be read
+            except (PermissionError, OSError, UnicodeError) as error:
+                # log a warning and skip unreadable files instead of failing the entire search
+                logger.warning(
+                    "Skipping unreadable file %s: %s",
+                    file_path,
+                    error,
+                )
+                continue
 
             # check if the search query is in the content
             haystack = content if case_sensitive else content.lower()
