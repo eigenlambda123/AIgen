@@ -1,3 +1,6 @@
+import logging
+import requests
+
 from agent import run_agent
 from config import (
     DEFAULT_MODELS,
@@ -9,6 +12,9 @@ from config import (
     TRUNCATION_LIMITS,
     WORKSPACE_DIR
 )
+
+# logging configuration
+logger = logging.getLogger(__name__)
 
 
 def print_help() -> None:
@@ -45,7 +51,8 @@ Configuration:
 
 def main() -> None:
     """Run the interactive assistant loop."""
-    print("local-slm assistant")
+    print("ΛIgent - Local AI Agent")
+    print("Connected tools are available through the agent.")
     print("Type /help for commands or /exit to quit.")
 
     while True:
@@ -77,11 +84,33 @@ def main() -> None:
             continue
 
         try:
+            print("\nWorking...")
             response = run_agent(user_input)
             print(f"\nAssistant: {response}")
-        except Exception as error:
+        except requests.ConnectionError:
+            logger.exception("Could not connect to Ollama")
+            print(
+                "\nError: Could not connect to Ollama. "
+                "Make sure Ollama is running and try again."
+            )
+        except requests.Timeout:
+            logger.exception("Ollama request timed out")
+            print(
+                "\nError: Ollama took too long to respond. "
+                "Try increasing OLLAMA_TIMEOUT or using a smaller model."
+            )
+        except requests.HTTPError as error:
+            logger.exception("Ollama returned an HTTP error")
+            print(f"\nError: Ollama returned an HTTP error: {error}")
+        except RuntimeError as error:
+            logger.exception("Ollama returned an unexpected response")
             print(f"\nError: {error}")
-
+        except Exception:
+            logger.exception("Unexpected agent failure")
+            print(
+                "\nError: An unexpected error occurred. "
+                "Check the logs for details."
+            )
 
 if __name__ == "__main__":
     main()

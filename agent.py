@@ -9,7 +9,7 @@ from ollama_client import call_ollama, extract_tool_call
 from config import DEFAULT_MODELS, MAX_AGENT_ITERATIONS
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
