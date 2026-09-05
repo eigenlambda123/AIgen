@@ -65,43 +65,165 @@ All tools operate through the registry in `fs_tools.py` and are fully type-hinte
 - `fs_tools.py` — filesystem, PDF, screenshot, and OCR integrations (fully type-hinted)
 - `ollama_client.py` — local Ollama API calls with configurable timeout and tool-call JSON extraction
 
-## Dependencies
+## Installation and Quick Start
 
-Install the packages listed in `requirements.txt`. The application expects:
+### 1. Create and activate a virtual environment
 
-- An Ollama-compatible server running (default: `http://localhost:11434`, configurable via `OLLAMA_API_URL`)
-- The configured language models available locally (configurable via `MODEL_*` env vars)
-- Tesseract OCR installed (default: `C:\Program Files\Tesseract-OCR\tesseract.exe`, configurable via `TESSERACT_PATH`)
+On Windows PowerShell:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+### 2. Install dependencies
+
+```powershell
+pip install -r requirements.txt
+```
+
+### 3. Install and prepare Ollama
+
+Install Ollama, then start the server:
+
+```powershell
+ollama serve
+```
+
+Pull the configured models:
+
+```powershell
+ollama pull qwen2.5:7b
+ollama pull qwen2.5vl:7b
+```
+
+Tesseract OCR is required for OCR features. The default path is
+`C:\Program Files\Tesseract-OCR\tesseract.exe`; it can be changed with
+`TESSERACT_PATH`.
+
+### 4. Start the interactive CLI
+
+```powershell
+python app.py
+```
+
+The CLI accepts natural-language requests and supports the commands below.
 
 ### Configuration via Environment Variables
 
 All settings can be overridden without code changes:
 
-```bash
+```powershell
 # Example: customize workspace and models
 $env:WORKSPACE_DIR = "C:\My\Custom\Path"
 $env:MODEL_PLANNER = "llama2:13b"
 $env:OLLAMA_TIMEOUT = "600"
 $env:TRUNCATE_FILE_CHARS = "5000"
 
-python agent.py
+python app.py
 ```
 
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed Mermaid diagrams covering the end-to-end agent flow, model routing, registry, and each individual tool.
 
-## Quick Start
+## CLI Commands
 
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+Run the assistant with:
 
-# 2. Start Ollama server (if not running)
-ollama serve
-
-# 3. Run a query
-python -c "from agent import run_agent; print(run_agent('List files in current workspace'))"
+```powershell
+python app.py
 ```
+
+| Command | Description |
+| --- | --- |
+| `/help` | Show available commands |
+| `/config` | Show active non-secret configuration |
+| `/exit` | Exit the assistant |
+| `/quit` | Alias for `/exit` |
+
+Example:
+
+```text
+You: /config
+You: List the files in my workspace
+You: /exit
+```
+
+The CLI displays a `Working...` message while processing requests and reports
+connection, timeout, HTTP, and unexpected-response errors separately.
+
+## Troubleshooting
+
+### Ollama connection error
+
+Verify that Ollama is running:
+
+```powershell
+ollama serve
+```
+
+Then verify that the required models are installed:
+
+```powershell
+ollama list
+```
+
+If necessary, pull them again:
+
+```powershell
+ollama pull qwen2.5:7b
+ollama pull qwen2.5vl:7b
+```
+
+### Request timeout
+
+Increase the timeout for long-running requests:
+
+```powershell
+$env:OLLAMA_TIMEOUT = "600"
+python app.py
+```
+
+### Custom workspace
+
+Set a different sandboxed workspace:
+
+```powershell
+$env:WORKSPACE_DIR = "C:\My\Custom\Path"
+python app.py
+```
+
+All filesystem operations remain restricted to the configured workspace.
+
+### OCR errors
+
+If Tesseract is installed in a non-default location:
+
+```powershell
+$env:TESSERACT_PATH = "C:\Path\To\tesseract.exe"
+python app.py
+```
+
+## Running Tests
+
+Run the complete test suite:
+
+```powershell
+.\venv\Scripts\python.exe -m pytest
+```
+
+Run tests with coverage:
+
+```powershell
+.\venv\Scripts\python.exe -m pytest `
+  --cov=agent `
+  --cov=fs_tools `
+  --cov=ollama_client `
+  --cov=app `
+  --cov-report=term-missing
+```
+
+The project targets at least 80% overall test coverage.
 
 _This project is a work in progress and may be updated frequently. Please check the repository for the latest changes._
