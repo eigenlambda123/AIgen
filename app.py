@@ -1,4 +1,14 @@
 from agent import run_agent
+from config import (
+    DEFAULT_MODELS,
+    MAX_AGENT_ITERATIONS,
+    OLLAMA_API_URL,
+    OLLAMA_TIMEOUT,
+    SEARCH_MAX_RESULTS,
+    TESSERACT_PATH,
+    TRUNCATION_LIMITS,
+    WORKSPACE_DIR
+)
 
 
 def print_help() -> None:
@@ -9,6 +19,26 @@ Commands:
   /help    Show this help message
   /config  Show current configuration
   /exit    Exit the application
+"""
+    )
+
+def print_config() -> None:
+    """Display safe, non-secret application configuration."""
+    print(
+        f"""
+Configuration:
+  Workspace: {WORKSPACE_DIR}
+  Ollama URL: {OLLAMA_API_URL}
+  Ollama timeout: {OLLAMA_TIMEOUT} seconds
+  Planner model: {DEFAULT_MODELS["planner"]}
+  Text model: {DEFAULT_MODELS["text"]}
+  Vision model: {DEFAULT_MODELS["vision"]}
+  Max agent iterations: {MAX_AGENT_ITERATIONS}
+  Search result limit: {SEARCH_MAX_RESULTS}
+  File truncation limit: {TRUNCATION_LIMITS["file"]}
+  PDF truncation limit: {TRUNCATION_LIMITS["pdf"]}
+  OCR truncation limit: {TRUNCATION_LIMITS["ocr"]}
+  Tesseract path: {TESSERACT_PATH}
 """
     )
 
@@ -35,6 +65,10 @@ def main() -> None:
 
         if user_input == "/help":
             print_help()
+            continue
+
+        if user_input == "/config":
+            print_config()
             continue
 
         if user_input.startswith("/"):
