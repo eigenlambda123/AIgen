@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from agent import (
-    TOOL_REGISTRY,
+    TOOL_DEFINITIONS,
     build_tool_feedback,
     generate_capability_prompt,
     generate_planner_prompt,
@@ -10,7 +10,28 @@ from agent import (
     run_agent,
     validate_tool_action,
 )
+from tool_framework import ToolDefinition
 
+def make_test_read_file_definition():
+    return ToolDefinition(
+        name="read_file",
+        function=lambda relative_path: "sample file contents",
+        description="Read a test file.",
+        capability="text",
+        risk_level="low",
+        timeout_seconds=10,
+    )
+
+
+def make_test_screenshot_definition():
+    return ToolDefinition(
+        name="capture_screenshot",
+        function=lambda: "base64-image",
+        description="Capture a test screenshot.",
+        capability="vision",
+        risk_level="medium",
+        timeout_seconds=30,
+    )
 
 class TestToolCapability:
     def test_known_tool(self):
@@ -166,7 +187,7 @@ class TestPromptGeneration:
         """Verify that the planner prompt includes all registered tools."""
         prompt = generate_planner_prompt()
 
-        for tool_name in TOOL_REGISTRY:
+        for tool_name in TOOL_DEFINITIONS.keys():
             assert tool_name in prompt
 
         assert "Available tools:" in prompt
@@ -201,10 +222,9 @@ class TestRunAgent:
             '{"tool": "read_file", "args": {"relative_path": "notes.txt"}}',
             "The file contains useful notes.",
         ]
-
         with patch.dict(
-            "agent.TOOL_REGISTRY",
-            {"read_file": lambda relative_path: "sample file contents"},
+            "agent.TOOL_DEFINITIONS",
+            {"read_file": make_test_read_file_definition()},
             clear=True,
         ):
             result = run_agent("Read notes.txt")
@@ -243,8 +263,8 @@ class TestRunAgent:
         mock_call_ollama.return_value = tool_response
 
         with patch.dict(
-            "agent.TOOL_REGISTRY",
-            {"read_file": lambda relative_path: "sample contents"},
+            "agent.TOOL_DEFINITIONS",
+            {"read_file": make_test_read_file_definition()},
             clear=True,
         ):
             result = run_agent("Keep reading the file")
@@ -271,14 +291,11 @@ class TestRunAgent:
             "The screen shows a terminal.",
             "Final answer about the screen.",
         ]
-
         with patch.dict(
-            "agent.TOOL_REGISTRY",
-            {"capture_screenshot": lambda: "base64-image"},
-            clear=True,
-        ), patch.dict(
-            "agent.TOOL_CAPABILITY",
-            {"capture_screenshot": "vision"},
+            "agent.TOOL_DEFINITIONS",
+            {
+                "capture_screenshot": make_test_screenshot_definition(),
+            },
             clear=True,
         ):
             result = run_agent("Describe my screen")
