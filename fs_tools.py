@@ -485,13 +485,3 @@ TOOL_DEFINITIONS = {
         argument_types=None,
     ),
 }
-
-TOOL_REGISTRY = {
-    name: definition.function
-    for name, definition in TOOL_DEFINITIONS.items()
-}
-
-TOOL_CAPABILITY = {
-    name: definition.capability
-    for name, definition in TOOL_DEFINITIONS.items()
-}
