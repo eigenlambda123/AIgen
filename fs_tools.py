@@ -12,7 +12,8 @@ import cv2
 from PIL import Image
 import pytesseract
 
-# Import configuration
+from tool_framework import ToolDefinition
+
 from config import WORKSPACE_DIR, TESSERACT_PATH, TRUNCATION_LIMITS, SEARCH_MAX_RESULTS, DEFAULT_SCREENSHOT_SCALE, DEFAULT_JPEG_QUALITY, DEFAULT_OCR_LANGUAGE
 
 # pytesseract configuration: use Tesseract path from config
@@ -407,23 +408,90 @@ def ocr_screen(
     return ocr_image_base64(screenshot, lang=lang, max_chars=max_chars)
 
 
+TOOL_DEFINITIONS = {
+    "read_file": ToolDefinition(
+        name="read_file",
+        function=read_file,
+        description="Read a text file inside the configured workspace.",
+        capability="text",
+        risk_level="low",
+        timeout_seconds=10,
+        argument_types={
+            "relative_path": str,
+        },
+    ),
+    "list_directory": ToolDefinition(
+        name="list_directory",
+        function=list_directory,
+        description="List files and folders inside the configured workspace.",
+        capability="text",
+        risk_level="low",
+        timeout_seconds=10,
+        argument_types={
+            "relative_path": str,
+        },
+    ),
+    "read_pdf": ToolDefinition(
+        name="read_pdf",
+        function=read_pdf,
+        description="Extract text from a PDF inside the configured workspace.",
+        capability="text",
+        risk_level="low",
+        timeout_seconds=30,
+        argument_types={
+            "relative_path": str,
+        },
+    ),
+    "search_files": ToolDefinition(
+        name="search_files",
+        function=search_files,
+        description="Search workspace files for a text query.",
+        capability="text",
+        risk_level="low",
+        timeout_seconds=30,
+        argument_types={
+            "relative_path": str,
+            "query": str,
+        },
+    ),
+    "capture_screenshot": ToolDefinition(
+        name="capture_screenshot",
+        function=capture_screenshot,
+        description="Capture a monitor or screen region as a JPEG image.",
+        capability="vision",
+        risk_level="medium",
+        timeout_seconds=30,
+        argument_types=None,
+    ),
+    "ocr_image_base64": ToolDefinition(
+        name="ocr_image_base64",
+        function=ocr_image_base64,
+        description="Extract text from a base64-encoded image using OCR.",
+        capability="text",
+        risk_level="medium",
+        timeout_seconds=60,
+        argument_types={
+            "b64_image": str,
+            "lang": str,
+        },
+    ),
+    "ocr_screen": ToolDefinition(
+        name="ocr_screen",
+        function=ocr_screen,
+        description="Capture the screen and perform OCR.",
+        capability="text",
+        risk_level="medium",
+        timeout_seconds=60,
+        argument_types=None,
+    ),
+}
+
 TOOL_REGISTRY = {
-    'read_file': read_file,
-    'list_directory': list_directory,
-    'read_pdf': read_pdf,
-    'search_files': search_files,
-    'capture_screenshot': capture_screenshot,
-    'ocr_image_base64': ocr_image_base64,
-    'ocr_screen': ocr_screen,
-        
+    name: definition.function
+    for name, definition in TOOL_DEFINITIONS.items()
 }
 
 TOOL_CAPABILITY = {
-    "list_directory": "text",
-    "read_file": "text",
-    "read_pdf": "text",
-    "search_files": "text",
-    "capture_screenshot": "vision",
-    "ocr_image_base64": "text",
-    "ocr_screen": "text",
+    name: definition.capability
+    for name, definition in TOOL_DEFINITIONS.items()
 }
