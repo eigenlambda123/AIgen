@@ -1,10 +1,9 @@
 import json
-import inspect
 import re
 import logging
 from typing import Any, Dict, Tuple
 
-from fs_tools import TOOL_REGISTRY, TOOL_CAPABILITY
+from fs_tools import TOOL_DEFINITIONS
 from ollama_client import call_ollama, extract_tool_call
 from config import DEFAULT_MODELS, MAX_AGENT_ITERATIONS
 
@@ -20,11 +19,10 @@ def generate_planner_prompt() -> str:
         A prompt instructing the planner how to select tools and respond.
     """
     tool_descriptions = []
-    for name, func in TOOL_REGISTRY.items():
-        doc = func.__doc__ or "No description available."
-        # inspect object/function detail
-        sig = inspect.signature(func)
-        tool_descriptions.append(f"- {name}{sig}: {doc}")
+    for name, definition in TOOL_DEFINITIONS.items():
+        tool_descriptions.append(
+            f"- {name}: {definition.description}"
+        )
 
     tools_formatted = "\n".join(tool_descriptions)
 
@@ -68,7 +66,12 @@ def get_tool_capability(tool_name: str) -> str:
     Returns:
         The configured capability, or ``"text"`` when no mapping exists.
     """
-    return TOOL_CAPABILITY.get(tool_name, "text")
+    definition = TOOL_DEFINITIONS.get(tool_name)
+
+    if definition is None:
+        return "text"
+
+    return definition.capability
 
 
 def get_model_for_capability(capability: str, models: Dict[str, str]) -> str:
@@ -139,16 +142,17 @@ def validate_tool_action(action: dict) -> Tuple[bool, str, dict]:
         action: Parsed action containing ``tool`` and optional ``args`` keys.
 
     Returns:
-        A tuple of ``(is_valid, tool_name, tool_args)``. Invalid actions
-        return ``False``, an empty tool name, and an empty argument dictionary.
+        A tuple of ``(is_valid, tool_name, tool_args)``.
     """
     tool_name = action.get("tool")
     tool_args = action.get("args", {})
 
     if not isinstance(tool_name, str):
         return False, "Tool name must be a string.", {}
-    if tool_name not in TOOL_REGISTRY:
+
+    if tool_name not in TOOL_DEFINITIONS:
         return False, f"Unknown tool: '{tool_name}'.", {}
+
     if not isinstance(tool_args, dict):
         return False, "Tool arguments must be a dictionary.", {}
 
@@ -197,7 +201,8 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
             return raw_response
 
         logger.info(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")
-        tool_result = TOOL_REGISTRY[tool_name](**tool_args)
+        tool_definition = TOOL_DEFINITIONS[tool_name]
+        tool_result = tool_definition.function(**tool_args)
         logger.debug(f"[Tool Output]\n{tool_result}")
 
         feedback = build_tool_feedback(
