@@ -74,3 +74,18 @@ def test_timeout_error(mock_run_agent, capsys):
     output = capsys.readouterr().out
 
     assert "took too long to respond" in output
+
+def test_tools_command(capsys):
+    """Verify that the /tools command displays the available tools."""
+    with patch("builtins.input", side_effect=["/tools", "/exit"]):
+        main()
+
+    output = capsys.readouterr().out
+
+    assert "Available tools:" in output
+    assert "read_file" in output
+    assert "Description:" in output
+    assert "Capability:" in output
+    assert "Risk level:" in output
+    assert "Timeout:" in output
+    assert "Confirmation required:" in output
