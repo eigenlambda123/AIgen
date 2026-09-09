@@ -86,6 +86,39 @@ def test_tools_command(capsys):
     assert "read_file" in output
     assert "Description:" in output
     assert "Capability:" in output
+
+def test_tools_command_is_concise(capsys):
+    """Verify that the /tools command output is concise and does not include risk level, timeout, or confirmation required."""
+    with patch("builtins.input", side_effect=["/tools", "/exit"]):
+        main()
+
+    output = capsys.readouterr().out
+
+    assert "Available tools:" in output
+    assert "read_file" in output
+    assert "Risk level:" not in output
+    assert "Timeout:" not in output
+    assert "Confirmation required:" not in output
+
+def test_tool_details_command(capsys):
+    """Verify that the /tool <tool_name> command displays detailed information about a specific tool."""
+    with patch("builtins.input", side_effect=["/tool read_file", "/exit"]):
+        main()
+
+    output = capsys.readouterr().out
+
+    assert "Tool: read_file" in output
+    assert "Description:" in output
+    assert "Capability:" in output
     assert "Risk level:" in output
     assert "Timeout:" in output
     assert "Confirmation required:" in output
+
+def test_unknown_tool_details(capsys):
+    """Verify that requesting details for an unknown tool displays an appropriate message."""
+    with patch("builtins.input", side_effect=["/tool unknown_tool", "/exit"]):
+        main()
+
+    output = capsys.readouterr().out
+
+    assert "Unknown tool: unknown_tool" in output
