@@ -27,6 +27,8 @@ Commands:
   /help    Show this help message
   /config  Show current configuration
   /exit    Exit the application
+  /tools   List available tools
+  /tool <tool_name>  Show details for a specific tool
 """
     )
 
@@ -62,22 +64,37 @@ def print_tools() -> None:
   {definition.name}
     Description: {definition.description}
     Capability: {definition.capability}
-    Risk level: {definition.risk_level}
-    Timeout: {definition.timeout_seconds:g} seconds
-    Confirmation required: {confirmation}
 """
         )
+
+def print_tool_details(tool_name: str) -> None:
+    """Display detailed metadata for one registered tool."""
+    definition = TOOL_DEFINITIONS.get(tool_name)
+
+    if definition is None:
+        print(f"Unknown tool: {tool_name}")
+        print("Use /tools to see available tools.")
+        return
+
+    confirmation = "yes" if definition.requires_confirmation else "no"
+
+    print(
+        f"""
+Tool: {definition.name}
+Description: {definition.description}
+Capability: {definition.capability}
+Risk level: {definition.risk_level}
+Timeout: {definition.timeout_seconds:g} seconds
+Confirmation required: {confirmation}
+Argument types: {definition.argument_types or "Not specified"}
+"""
+    )
 
 def main() -> None:
     """Run the interactive assistant loop."""
     print("ΛIgent - Local AI Agent")
     print("Connected tools are available through the agent.")
-    print("""
-Type /help to see available commands.
-Type /config to see the current configuration.
-Type /tools to see the available tools.
-Type /exit to quit.
-    """)
+    print("Type /help to see available commands.")
 
     while True:
         try:
@@ -104,6 +121,16 @@ Type /exit to quit.
 
         if user_input == "/tools":
             print_tools()
+            continue
+
+        if user_input.startswith("/tool"):
+            parts = user_input.split(maxsplit=1)
+
+            if len(parts) == 1:
+                print("Usage: /tool <tool_name>")
+                continue
+
+            print_tool_details(parts[1])
             continue
 
         if user_input.startswith("/"):
