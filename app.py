@@ -13,6 +13,8 @@ from config import (
     WORKSPACE_DIR
 )
 
+from fs_tools import TOOL_DEFINITIONS
+
 # logging configuration
 logger = logging.getLogger(__name__)
 
@@ -48,12 +50,34 @@ Configuration:
 """
     )
 
+def print_tools() -> None:
+    """Display registered tools and their execution metadata."""
+    print("\nAvailable tools:")
+
+    for definition in TOOL_DEFINITIONS.values():
+        confirmation = "yes" if definition.requires_confirmation else "no"
+
+        print(
+            f"""
+  {definition.name}
+    Description: {definition.description}
+    Capability: {definition.capability}
+    Risk level: {definition.risk_level}
+    Timeout: {definition.timeout_seconds:g} seconds
+    Confirmation required: {confirmation}
+"""
+        )
 
 def main() -> None:
     """Run the interactive assistant loop."""
     print("ΛIgent - Local AI Agent")
     print("Connected tools are available through the agent.")
-    print("Type /help for commands or /exit to quit.")
+    print("""
+Type /help to see available commands.
+Type /config to see the current configuration.
+Type /tools to see the available tools.
+Type /exit to quit.
+    """)
 
     while True:
         try:
@@ -76,6 +100,10 @@ def main() -> None:
 
         if user_input == "/config":
             print_config()
+            continue
+
+        if user_input == "/tools":
+            print_tools()
             continue
 
         if user_input.startswith("/"):
