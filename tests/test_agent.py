@@ -10,7 +10,7 @@ from agent import (
     run_agent,
     validate_tool_action,
 )
-from tool_framework import ToolDefinition
+from tool_framework import ToolDefinition, validate_tool_arguments
 
 def make_test_read_file_definition():
     return ToolDefinition(
@@ -302,3 +302,85 @@ class TestRunAgent:
 
         assert result == "Final answer about the screen."
         assert mock_call_ollama.call_count == 3
+
+
+class TestToolArgumentValidation:
+    def test_valid_arguments(self):
+        """Verify that valid arguments pass validation."""
+        definition = ToolDefinition(
+            name="read_file",
+            function=lambda relative_path: "contents",
+            description="Read a file.",
+            capability="text",
+            risk_level="low",
+            timeout_seconds=10,
+            argument_types={"relative_path": str},
+        )
+
+        valid, error = validate_tool_arguments(
+            definition,
+            {"relative_path": "notes.txt"},
+        )
+
+        assert valid is True
+        assert error == ""
+
+    def test_missing_required_argument(self):
+        """Verify that missing required arguments fail validation."""
+        definition = ToolDefinition(
+            name="read_file",
+            function=lambda relative_path: "contents",
+            description="Read a file.",
+            capability="text",
+            risk_level="low",
+            timeout_seconds=10,
+            argument_types={"relative_path": str},
+        )
+
+        valid, error = validate_tool_arguments(definition, {})
+
+        assert valid is False
+        assert "Missing required argument" in error
+
+    def test_unknown_argument(self):
+        """Verify that unknown arguments fail validation."""
+        definition = ToolDefinition(
+            name="read_file",
+            function=lambda relative_path: "contents",
+            description="Read a file.",
+            capability="text",
+            risk_level="low",
+            timeout_seconds=10,
+            argument_types={"relative_path": str},
+        )
+
+        valid, error = validate_tool_arguments(
+            definition,
+            {
+                "relative_path": "notes.txt",
+                "unexpected": True,
+            },
+        )
+
+        assert valid is False
+        assert "Unknown argument" in error
+
+    def test_wrong_argument_type(self):
+        """Verify that arguments of the wrong type fail validation."""
+        definition = ToolDefinition(
+            name="read_file",
+            function=lambda relative_path: "contents",
+            description="Read a file.",
+            capability="text",
+            risk_level="low",
+            timeout_seconds=10,
+            argument_types={"relative_path": str},
+        )
+
+        valid, error = validate_tool_arguments(
+            definition,
+            {"relative_path": 123},
+        )
+
+        assert valid is False
+        assert "must be of type str" in error

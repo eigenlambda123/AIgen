@@ -6,6 +6,7 @@ from typing import Any, Dict, Tuple
 from fs_tools import TOOL_DEFINITIONS
 from ollama_client import call_ollama, extract_tool_call
 from config import DEFAULT_MODELS, MAX_AGENT_ITERATIONS
+from tool_framework import validate_tool_arguments
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
@@ -200,8 +201,21 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
             logger.error("Invalid tool action: %s", tool_name)
             return raw_response
 
-        logger.info(f"[Agent Execution] Invoking tool '{tool_name}' with args: {tool_args}")
         tool_definition = TOOL_DEFINITIONS[tool_name]
+
+        # validate the tool arguments 
+        arguments_valid, argument_error = validate_tool_arguments(
+            tool_definition,
+            tool_args,
+        )
+        if not arguments_valid:
+            logger.error("Invalid arguments: %s", argument_error)
+            return raw_response
+        logger.info(
+            f"[Agent Execution] Invoking tool '{tool_name}' "
+            f"with args: {tool_args}"
+        )
+
         tool_result = tool_definition.function(**tool_args)
         logger.debug(f"[Tool Output]\n{tool_result}")
 
