@@ -21,6 +21,7 @@ def make_test_read_file_definition():
         capability="text",
         risk_level="low",
         timeout_seconds=10,
+        output_limit=1000,
     )
 
 
@@ -32,6 +33,7 @@ def make_test_screenshot_definition():
         capability="vision",
         risk_level="medium",
         timeout_seconds=30,
+        output_limit=1000,
     )
 
 
@@ -331,6 +333,7 @@ class TestRunAgent:
             capability="text",
             risk_level="low",
             timeout_seconds=10,
+            output_limit=1000,
             argument_types={"relative_path": str},
         )
 
@@ -355,6 +358,7 @@ class TestValidateToolArguments:
             capability="text",
             risk_level="low",
             timeout_seconds=10,
+            output_limit=1000,
             argument_types={"relative_path": str},
         )
 
@@ -375,6 +379,7 @@ class TestValidateToolArguments:
             capability="text",
             risk_level="low",
             timeout_seconds=10,
+            output_limit=1000,
             argument_types={"relative_path": str},
         )
 
@@ -392,6 +397,7 @@ class TestValidateToolArguments:
             capability="text",
             risk_level="low",
             timeout_seconds=10,
+            output_limit=1000,
             argument_types={"relative_path": str},
         )
 
@@ -415,6 +421,7 @@ class TestValidateToolArguments:
             capability="text",
             risk_level="low",
             timeout_seconds=10,
+            output_limit=1000,
             argument_types={"relative_path": str},
         )
 
