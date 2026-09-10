@@ -303,6 +303,43 @@ class TestRunAgent:
         assert result == "Final answer about the screen."
         assert mock_call_ollama.call_count == 3
 
+    @patch("agent.call_ollama")
+    def test_invalid_arguments_prevent_tool_execution(
+        self,
+        mock_call_ollama,
+    ):
+        """Verify that invalid tool arguments prevent tool execution and return the raw response."""
+        mock_call_ollama.return_value = (
+            '{"tool": "read_file", "args": {"relative_path": 123}}'
+        )
+
+        tool_called = False
+
+        def test_tool(relative_path):
+            nonlocal tool_called
+            tool_called = True
+            return "should not run"
+
+        definition = ToolDefinition(
+            name="read_file",
+            function=test_tool,
+            description="Read a file.",
+            capability="text",
+            risk_level="low",
+            timeout_seconds=10,
+            argument_types={"relative_path": str},
+        )
+
+        with patch.dict(
+            "agent.TOOL_DEFINITIONS",
+            {"read_file": definition},
+            clear=True,
+        ):
+            result = run_agent("Read a file")
+
+        assert result.startswith('{"tool": "read_file"')
+        assert tool_called is False
+
 
 class TestToolArgumentValidation:
     def test_valid_arguments(self):
