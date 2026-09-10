@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 import inspect
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
 
 ToolCallable = Callable[..., Any]
@@ -8,12 +9,15 @@ ToolCallable = Callable[..., Any]
 
 @dataclass(frozen=True)
 class ToolDefinition:
+    """Describe a tool and the rules governing its execution."""
+
     name: str
     function: ToolCallable
     description: str
     capability: str
     risk_level: str
     timeout_seconds: float
+    output_limit: int
     requires_confirmation: bool = False
     argument_types: Mapping[str, type] | None = None
 
@@ -70,3 +74,41 @@ def validate_tool_arguments(
                 )
 
     return True, ""
+
+
+def execute_tool(
+    definition: ToolDefinition,
+    arguments: dict[str, Any],
+) -> Any:
+    """Execute a tool with its configured timeout and output limit.
+
+    Args:
+        definition: Metadata for the selected tool.
+        arguments: Validated tool arguments.
+
+    Returns:
+        The tool result, possibly truncated when it is textual.
+
+    Raises:
+        TimeoutError: If the tool exceeds its configured timeout.
+    """
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(definition.function, **arguments)
+
+        try:
+            result = future.result(timeout=definition.timeout_seconds)
+        except FutureTimeoutError as error:
+            future.cancel()
+            raise TimeoutError(
+                f"Tool '{definition.name}' exceeded its "
+                f"{definition.timeout_seconds:g}-second timeout."
+            ) from error
+
+    if isinstance(result, str) and len(result) > definition.output_limit:
+        return (
+            result[:definition.output_limit]
+            + f"\n\n[... Truncated: tool output exceeds "
+            f"{definition.output_limit} characters ...]"
+        )
+
+    return result
