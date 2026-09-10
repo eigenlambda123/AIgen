@@ -71,3 +71,27 @@ MAX_AGENT_ITERATIONS = int(os.getenv("MAX_AGENT_ITERATIONS", "5"))
 
 # Search results limit
 SEARCH_MAX_RESULTS = int(os.getenv("SEARCH_MAX_RESULTS", "20"))
+
+# ============================================================================
+# TOOL TIMEOUT AND OUTPUT LIMIT CONFIGURATION
+# ============================================================================
+
+TOOL_TIMEOUTS = {
+    "read_file": int(os.getenv("TIMEOUT_READ_FILE", "10")),
+    "list_directory": int(os.getenv("TIMEOUT_LIST_DIRECTORY", "10")),
+    "read_pdf": int(os.getenv("TIMEOUT_READ_PDF", "30")),
+    "search_files": int(os.getenv("TIMEOUT_SEARCH_FILES", "30")),
+    "capture_screenshot": int(os.getenv("TIMEOUT_CAPTURE_SCREENSHOT", "30")),
+    "ocr_image_base64": int(os.getenv("TIMEOUT_OCR_IMAGE", "60")),
+    "ocr_screen": int(os.getenv("TIMEOUT_OCR_SCREEN", "60")),
+}
+
+TOOL_OUTPUT_LIMITS = {
+    "read_file": TRUNCATION_LIMITS["file"],
+    "list_directory": int(os.getenv("TRUNCATE_DIRECTORY_CHARS", "8000")),
+    "read_pdf": TRUNCATION_LIMITS["pdf"],
+    "search_files": int(os.getenv("TRUNCATE_SEARCH_CHARS", "8000")),
+    "capture_screenshot": 0,
+    "ocr_image_base64": TRUNCATION_LIMITS["ocr"],
+    "ocr_screen": TRUNCATION_LIMITS["ocr"],
+}
