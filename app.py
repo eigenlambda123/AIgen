@@ -86,6 +86,7 @@ Capability: {definition.capability}
 Risk level: {definition.risk_level}
 Timeout: {definition.timeout_seconds:g} seconds
 Confirmation required: {confirmation}
+Output limit: {definition.output_limit} characters
 Argument types: {definition.argument_types or "Not specified"}
 """
     )

@@ -6,7 +6,7 @@ from typing import Any, Dict, Tuple
 from fs_tools import TOOL_DEFINITIONS
 from ollama_client import call_ollama, extract_tool_call
 from config import DEFAULT_MODELS, MAX_AGENT_ITERATIONS
-from tool_framework import validate_tool_arguments
+from tool_framework import validate_tool_arguments, execute_tool
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
@@ -216,7 +216,11 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
             f"with args: {tool_args}"
         )
 
-        tool_result = tool_definition.function(**tool_args)
+        try:
+            tool_result = execute_tool(tool_definition, tool_args)
+        except TimeoutError as error:
+            logger.error("%s", error)
+            return f"Error: {error}"
         logger.debug(f"[Tool Output]\n{tool_result}")
 
         feedback = build_tool_feedback(
