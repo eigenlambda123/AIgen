@@ -12,6 +12,7 @@ from agent import (
 )
 from tool_framework import ToolDefinition, validate_tool_arguments
 
+
 def make_test_read_file_definition():
     return ToolDefinition(
         name="read_file",
@@ -33,7 +34,8 @@ def make_test_screenshot_definition():
         timeout_seconds=30,
     )
 
-class TestToolCapability:
+
+class TestGetToolCapability:
     def test_known_tool(self):
         """Verify that known tools return their configured capability."""
         assert get_tool_capability("read_file") == "text"
@@ -43,7 +45,7 @@ class TestToolCapability:
         assert get_tool_capability("unknown_tool") == "text"
 
 
-class TestModelRouting:
+class TestGetModelForCapability:
     def test_known_capabilities(self):
         """Verify that known capabilities return their configured models."""
         models = {
@@ -63,7 +65,7 @@ class TestModelRouting:
         assert get_model_for_capability("unknown_capability", models) == "planner-model"
 
 
-class TestToolActionValidation:
+class TestValidateToolAction:
     def test_unknown_tool(self):
         """Verify that unknown tools are rejected."""
         valid, tool_name, tool_args = validate_tool_action({
@@ -118,7 +120,7 @@ class TestToolActionValidation:
         assert tool_args == {}
 
 
-class TestToolFeedback:
+class TestBuildToolFeedback:
     @patch("agent.call_ollama")
     def test_text_tool(self, mock_call_ollama):
         """Verify that text tool output is returned directly."""
@@ -182,16 +184,7 @@ class TestToolFeedback:
         mock_call_ollama.assert_not_called()
 
 
-class TestPromptGeneration:
-    def test_planner_prompt_contains_registered_tools(self):
-        """Verify that the planner prompt includes all registered tools."""
-        prompt = generate_planner_prompt()
-
-        for tool_name in TOOL_DEFINITIONS.keys():
-            assert tool_name in prompt
-
-        assert "Available tools:" in prompt
-
+class TestGenerateCapabilityPrompt:
     def test_vision_capability_prompt(self):
         """Verify that vision prompts include image-specific instructions."""
         result = generate_capability_prompt("vision")
@@ -202,6 +195,17 @@ class TestPromptGeneration:
     def test_non_vision_capability_prompt(self):
         """Verify that non-vision prompts use the general assistant prompt."""
         assert generate_capability_prompt("text") == "You are a helpful assistant."
+
+
+class TestGeneratePlannerPrompt:
+    def test_contains_registered_tools(self):
+        """Verify that the planner prompt includes all registered tools."""
+        prompt = generate_planner_prompt()
+
+        for tool_name in TOOL_DEFINITIONS.keys():
+            assert tool_name in prompt
+
+        assert "Available tools:" in prompt
 
 
 class TestRunAgent:
@@ -341,7 +345,7 @@ class TestRunAgent:
         assert tool_called is False
 
 
-class TestToolArgumentValidation:
+class TestValidateToolArguments:
     def test_valid_arguments(self):
         """Verify that valid arguments pass validation."""
         definition = ToolDefinition(
