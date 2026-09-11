@@ -122,7 +122,10 @@ flowchart TD
 The tool metadata and implementations now have separate responsibilities:
 
 - `tool_registry.py` owns the single `TOOL_DEFINITIONS` registry.
-- `fs_tools.py` owns the filesystem, PDF, screenshot, and OCR implementations.
+- `tools/file_tools.py` exposes workspace and document tools.
+- `tools/screen_tools.py` exposes screen capture tools.
+- `tools/ocr_tools.py` exposes OCR tools.
+- `fs_tools.py` remains a compatibility module for existing imports.
 - `agent.py` and `app.py` consume the registry instead of constructing or
   duplicating tool metadata.
 

@@ -45,7 +45,8 @@ Model names can be overridden via environment variables or when calling `run_age
 ## Implemented Tools
 
 All tools operate through the centralized `TOOL_DEFINITIONS` registry in
-`tool_registry.py` and are fully type-hinted.
+`tool_registry.py` and are fully type-hinted. Implementations are grouped by
+responsibility under the `tools/` package.
 
 | Tool | Capability | Description |
 | --- | --- | --- |
@@ -64,7 +65,10 @@ All tools operate through the centralized `TOOL_DEFINITIONS` registry in
 - `config.py` — centralized configuration management with environment variable overrides
 - `agent.py` — planner prompt, model routing, tool validation, and ReAct agent loop with logging
 - `tool_registry.py` — the single source of truth for tool metadata and registration
-- `fs_tools.py` — filesystem, PDF, screenshot, and OCR integrations (fully type-hinted)
+- `tools/file_tools.py` — workspace and document tool entry points
+- `tools/screen_tools.py` — screen capture tool entry points
+- `tools/ocr_tools.py` — OCR tool entry points
+- `fs_tools.py` — compatibility imports for existing callers
 - `ollama_client.py` — local Ollama API calls with configurable timeout and tool-call JSON extraction
 
 ## Installation and Quick Start

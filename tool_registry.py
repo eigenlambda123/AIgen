@@ -1,12 +1,11 @@
-from fs_tools import (
-    capture_screenshot,
+from tools.file_tools import (
     list_directory,
-    ocr_image_base64,
-    ocr_screen,
     read_file,
     read_pdf,
     search_files,
 )
+from tools.ocr_tools import ocr_image_base64, ocr_screen
+from tools.screen_tools import capture_screenshot
 from config import TOOL_OUTPUT_LIMITS, TOOL_TIMEOUTS
 from tool_framework import ToolDefinition
 

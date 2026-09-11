@@ -3,15 +3,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from fs_tools import (
+from tools.file_tools import (
     list_directory,
     read_file,
     read_pdf,
     search_files,
-    capture_screenshot,
+    _get_safe_path,
+)
+from tools.screen_tools import capture_screenshot
+from tools.ocr_tools import (
     ocr_image_base64,
     ocr_screen,
-    _get_safe_path,
 )
 
 
@@ -20,7 +22,7 @@ class TestGetSafePath:
 
     def test_safe_path_inside_workspace(self, temp_workspace, monkeypatch):
         """Verify that valid paths inside the workspace are returned correctly."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Create a subdirectory.
         subdir = temp_workspace / "subdir"
@@ -31,7 +33,7 @@ class TestGetSafePath:
 
     def test_safe_path_prevents_directory_traversal(self, temp_workspace, monkeypatch):
         """Verify that directory traversal attempts are blocked."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Attempt to traverse outside the workspace.
         with pytest.raises(PermissionError):
@@ -39,7 +41,7 @@ class TestGetSafePath:
 
     def test_safe_path_blocks_absolute_paths(self, temp_workspace, monkeypatch):
         """Verify that absolute paths outside the workspace are blocked."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         with pytest.raises(PermissionError):
             _get_safe_path("C:\\Windows\\System32")
@@ -50,14 +52,14 @@ class TestListDirectory:
 
     def test_list_directory_empty(self, temp_workspace, monkeypatch):
         """Test listing an empty directory."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         result = list_directory(".")
         assert "empty" in result.lower()
 
     def test_list_directory_with_files(self, temp_workspace, monkeypatch):
         """Verify that files and directories are listed correctly."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Create some files and directories
         (temp_workspace / "file1.txt").write_text("File 1 content")
@@ -72,7 +74,7 @@ class TestListDirectory:
 
     def test_list_directory_nonexistent(self, temp_workspace, monkeypatch):
         """Verify that listing a non-existent directory returns an error message."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Test listing a non-existent directory
         result = list_directory("nonexistent_dir")
@@ -80,7 +82,7 @@ class TestListDirectory:
 
     def test_list_directory_file_path(self, temp_workspace, monkeypatch, sample_text_file):
         """Verify error when treating a file path as a directory."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         result = list_directory(f"{sample_text_file.name}")
         assert "Error" in result or "not a directory" in result
@@ -91,7 +93,7 @@ class TestReadFile:
 
     def test_read_file_success(self, temp_workspace, monkeypatch, sample_text_file):
         """Verify that reading a valid text file returns its content."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Read the sample text file.
         result = read_file("sample.txt")
@@ -100,7 +102,7 @@ class TestReadFile:
 
     def test_read_file_truncation(self, temp_workspace, monkeypatch, sample_large_file):
         """Verify that reading a large file triggers truncation and returns a truncated message."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         result = read_file("large_file.txt")
         assert "Truncated" in result
@@ -108,14 +110,14 @@ class TestReadFile:
 
     def test_read_file_nonexistent(self, temp_workspace, monkeypatch):
         """Verify that reading a non-existent file returns an error."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         result = read_file("nonexistent.txt")
         assert "Error" in result or "not found" in result
 
     def test_read_file_directory_error(self, temp_workspace, monkeypatch):
         """Verify that attempting to read a directory returns an error."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Create a directory instead of a file and test reading it.
         (temp_workspace / "mydir").mkdir()
@@ -128,24 +130,24 @@ class TestReadPDF:
 
     def test_read_pdf_nonexistent(self, temp_workspace, monkeypatch):
         """Verify that reading a non-existent PDF file returns an error."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         result = read_pdf("nonexistent.pdf")
         assert "Error" in result or "not found" in result
 
     def test_read_pdf_wrong_extension(self, temp_workspace, monkeypatch):
         """Verify that reading a file with a non-PDF extension returns an error."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # create a text file instead of a PDF
         (temp_workspace / "not_a_pdf.txt").write_text("This is not a PDF.")
         result = read_pdf("not_a_pdf.txt")
         assert "Error" in result or "not a PDF" in result
 
-    @patch("fs_tools.PdfReader")
+    @patch("tools.file_tools.PdfReader")
     def test_read_pdf_success(self, mock_pdf_reader, temp_workspace, monkeypatch):
         """Verify successful PDF reading with mock PDFReader."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # create a dummy PDF file
         (temp_workspace / "dummy.pdf").write_bytes(b"%PDF-1.4\n%Dummy PDF content")
@@ -164,14 +166,14 @@ class TestSearchFiles:
 
     def test_search_files_empty_query(self, temp_workspace, monkeypatch):
         """Verify that searching with an empty query returns an error."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         result = search_files(".", query="")
         assert "Error" in result or "cannot be empty" in result
 
     def test_search_files_no_matches(self, temp_workspace, monkeypatch):
         """Verify 'No matches' when searching for a query that does not exist in any files.""" 
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Create a file with content that does not match the search query.
         (temp_workspace / "file1.txt").write_text("This is a test file.")
@@ -180,7 +182,7 @@ class TestSearchFiles:
 
     def test_search_files_found(self, temp_workspace, monkeypatch):
         """Verify that searching for a query that exists in a file returns the correct match information."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Create a file with content that matches the search query.
         (temp_workspace / "file1.txt").write_text("This is a test file.")
@@ -190,7 +192,7 @@ class TestSearchFiles:
 
     def test_search_files_case_insensitive_by_default(self, temp_workspace, monkeypatch):
         """Verify that the search is case-insensitive by default."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Create a file with mixed-case content.
         (temp_workspace / "file1.txt").write_text("This is a Test file.")
@@ -199,7 +201,7 @@ class TestSearchFiles:
 
     def test_search_files_case_sensitive_option(self, temp_workspace, monkeypatch):
         """Verify that the search respects the case_sensitive option when set to True."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # create a file with mixed case content
         (temp_workspace / "file1.txt").write_text("This is a Test file.")
@@ -208,7 +210,7 @@ class TestSearchFiles:
 
     def test_search_files_filter_by_type(self, temp_workspace, monkeypatch):
         """Verify that the search can filter results by file type."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         # Create files with different extensions/types.
         (temp_workspace / "file1.txt").write_text("This is a test file.")
@@ -219,7 +221,7 @@ class TestSearchFiles:
 
     def test_search_files_rejects_invalid_max_results(self, temp_workspace, monkeypatch):
         """Verify that search_files rejects invalid max_results values and returns an error message."""
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         result = search_files(".", query="test", max_results=0)
 
@@ -232,15 +234,15 @@ class TestSearchFiles:
         caplog,
     ):
         # Verify that search_files logs a warning and continues searching.
-        monkeypatch.setattr("fs_tools.BASE_DIR", temp_workspace)
+        monkeypatch.setattr("tools.file_tools.BASE_DIR", temp_workspace)
 
         unreadable_file = temp_workspace / "unreadable.txt"
         unreadable_file.write_text("secret content")
 
         with patch(
-            "fs_tools.open",
+            "builtins.open",
             side_effect=PermissionError("access denied"),
-        ), caplog.at_level("WARNING", logger="fs_tools"):
+        ), caplog.at_level("WARNING", logger="tools.file_tools"):
             result = search_files(".", query="secret")
 
         assert "No matches found" in result
@@ -251,9 +253,9 @@ class TestSearchFiles:
 class TestCaptureScreenshot:
     """Test cases for the capture_screenshot tool to ensure correct screenshot capturing behavior."""
 
-    @patch("fs_tools.mss")
-    @patch("fs_tools.cv2.imencode")
-    @patch("fs_tools.np.array")
+    @patch("tools.screen_tools.mss")
+    @patch("tools.screen_tools.cv2.imencode")
+    @patch("tools.screen_tools.np.array")
     def test_capture_screenshot_success(self, mock_array, mock_imencode, mock_mss):
         """Verify that capture_screenshot returns a base64 string when successful."""
         # Mock screenshot capture.
@@ -270,7 +272,7 @@ class TestCaptureScreenshot:
         assert isinstance(result, str) and len(result) > 0  # Should return a base64 string.
         assert "Error" not in result
 
-    @patch("fs_tools.mss")
+    @patch("tools.screen_tools.mss")
     def test_capture_screenshot_encode_failure(self, mock_mss):
         """Verify that capture_screenshot handles encoding failure gracefully."""
         # mock screenshot capture
@@ -280,9 +282,9 @@ class TestCaptureScreenshot:
         mock_mss.return_value.__enter__.return_value.monitors = [None, {"left": 0, "top": 0}]
 
         # Mock cv2.imencode to simulate failure.
-        with patch("fs_tools.cv2.imencode", return_value=(False, None)):
-            with patch("fs_tools.np.array"):
-                with patch("fs_tools.cv2.cvtColor"):
+        with patch("tools.screen_tools.cv2.imencode", return_value=(False, None)):
+            with patch("tools.screen_tools.np.array"):
+                with patch("tools.screen_tools.cv2.cvtColor"):
                     result = capture_screenshot()
                     assert "Error" in result or "Failed to encode" in result
 
@@ -304,8 +306,8 @@ class TestCaptureScreenshot:
 class TestOCRImageBase64:
     """Test cases for the ocr_image_base64 tool's text extraction behavior."""
 
-    @patch("fs_tools.pytesseract.image_to_string")
-    @patch("fs_tools.Image.open")
+    @patch("tools.ocr_tools.pytesseract.image_to_string")
+    @patch("tools.ocr_tools.Image.open")
     def test_ocr_image_success(self, mock_image_open, mock_ocr):
         """Verify that ocr_image_base64 returns extracted text when successful."""
         # Mock image opening.
@@ -319,9 +321,9 @@ class TestOCRImageBase64:
         fake_image_data = base64.b64encode(b"fake_image_data").decode()
 
         # Mock cv2 and numpy functions to avoid actual image processing.
-        with patch('fs_tools.cv2.cvtColor'):
-            with patch('fs_tools.np.array'):
-                with patch('fs_tools.Image.fromarray'):
+        with patch('tools.ocr_tools.cv2.cvtColor'):
+            with patch('tools.ocr_tools.np.array'):
+                with patch('tools.ocr_tools.Image.fromarray'):
                     result = ocr_image_base64(fake_image_data)
                     assert "Extracted text" in result or "Error" not in result
 
@@ -341,8 +343,8 @@ class TestOCRImageBase64:
         result = ocr_image_base64("image-data", max_chars=0)
         assert result == "Error: max_chars must be greater than zero."
 
-    @patch("fs_tools.pytesseract.image_to_string")
-    @patch("fs_tools.Image.open")
+    @patch("tools.ocr_tools.pytesseract.image_to_string")
+    @patch("tools.ocr_tools.Image.open")
     def test_ocr_image_no_text(self, mock_image_open, mock_ocr):
         """Verify ocr_image_base64 handling when no text is detected."""
         # mock image opening
@@ -354,9 +356,9 @@ class TestOCRImageBase64:
         fake_image_data = base64.b64encode(b"fake_image_bytes").decode()
     
         # Mock cv2 and numpy functions to avoid actual image processing.
-        with patch('fs_tools.cv2.cvtColor'):
-            with patch('fs_tools.np.array'):
-                with patch('fs_tools.Image.fromarray'):
+        with patch('tools.ocr_tools.cv2.cvtColor'):
+            with patch('tools.ocr_tools.np.array'):
+                with patch('tools.ocr_tools.Image.fromarray'):
                     result = ocr_image_base64(fake_image_data)
                     assert "No text detected" in result or "Error" not in result
 
@@ -364,8 +366,8 @@ class TestOCRImageBase64:
 class TestOCRScreen:
     """Test cases for the ocr_screen tool to ensure correct screen text extraction behavior."""
 
-    @patch('fs_tools.ocr_image_base64')
-    @patch('fs_tools.capture_screenshot')
+    @patch('tools.ocr_tools.ocr_image_base64')
+    @patch('tools.ocr_tools.capture_screenshot')
     def test_ocr_screen_success(self, mock_capture, mock_ocr):
         """Verify that ocr_screen returns extracted text when screenshot and OCR are successful."""
 
@@ -376,7 +378,7 @@ class TestOCRScreen:
         result = ocr_screen()
         assert "Text from screen" in result
 
-    @patch('fs_tools.capture_screenshot')
+    @patch('tools.ocr_tools.capture_screenshot')
     def test_ocr_screen_capture_error(self, mock_capture):
         """Verify that ocr_screen propagates errors from screenshot capture."""
         mock_capture.return_value = "Error: Screenshot failed"
