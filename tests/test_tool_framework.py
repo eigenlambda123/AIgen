@@ -1,7 +1,49 @@
 import pytest
 import time
 
-from tool_framework import ToolDefinition, execute_tool
+from fs_tools import TOOL_DEFINITIONS
+from tool_framework import (
+    ToolDefinition,
+    execute_tool,
+    requires_confirmation,
+)
+
+
+@pytest.mark.parametrize(
+    "tool_name",
+    list(TOOL_DEFINITIONS),
+)
+def test_registered_tool_has_complete_metadata(tool_name):
+    """Verify that each registered tool has complete metadata and a callable function."""
+    definition = TOOL_DEFINITIONS[tool_name]
+
+    assert definition.name == tool_name
+    assert callable(definition.function)
+    assert definition.description
+    assert definition.capability in {"text", "vision"}
+    assert definition.risk_level in {"low", "medium", "high"}
+    assert definition.timeout_seconds > 0
+    assert definition.output_limit >= 0
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "capability", "risk_level"),
+    [
+        ("read_file", "text", "low"),
+        ("list_directory", "text", "low"),
+        ("read_pdf", "text", "low"),
+        ("search_files", "text", "low"),
+        ("capture_screenshot", "vision", "medium"),
+        ("ocr_image_base64", "text", "medium"),
+        ("ocr_screen", "text", "medium"),
+    ],
+)
+def test_tool_metadata_values(tool_name, capability, risk_level):
+    """Verify that each registered tool has the expected capability and risk level."""
+    definition = TOOL_DEFINITIONS[tool_name]
+
+    assert definition.capability == capability
+    assert definition.risk_level == risk_level
 
 
 def test_execute_tool_logs_safe_completion(caplog):
@@ -76,3 +118,35 @@ def test_execute_tool_logs_timeout(caplog):
 
     assert "Tool timed out" in caplog.text
     assert "slow_tool" in caplog.text
+
+
+def test_read_file_declares_relative_path_argument():
+    """Verify that the 'read_file' tool declares a 'relative_path' argument of type str."""
+    definition = TOOL_DEFINITIONS["read_file"]
+
+    assert definition.argument_types == {
+        "relative_path": str,
+    }
+
+
+def test_capture_screenshot_has_no_simple_argument_schema():
+    """Verify that the 'capture_screenshot' tool does not declare a simple argument schema."""
+    definition = TOOL_DEFINITIONS["capture_screenshot"]
+
+    assert definition.argument_types is None
+
+
+def test_tool_definition_metadata_is_immutable():
+    """Verify that the metadata of a ToolDefinition instance is immutable after creation."""
+    definition = ToolDefinition(
+        name="test_tool",
+        function=lambda: "result",
+        description="Test tool.",
+        capability="text",
+        risk_level="low",
+        timeout_seconds=5,
+        output_limit=100,
+    )
+
+    with pytest.raises(AttributeError):
+        definition.risk_level = "high"

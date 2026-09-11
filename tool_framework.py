@@ -170,3 +170,7 @@ def summarize_arguments(arguments: dict[str, Any]) -> dict[str, str]:
         name: type(value).__name__
         for name, value in arguments.items()
     }
+
+def requires_confirmation(definition: ToolDefinition) -> bool:
+    """Return whether a tool requires user confirmation before execution."""
+    return definition.requires_confirmation
