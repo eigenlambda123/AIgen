@@ -44,7 +44,8 @@ Model names can be overridden via environment variables or when calling `run_age
 
 ## Implemented Tools
 
-All tools operate through the registry in `fs_tools.py` and are fully type-hinted.
+All tools operate through the centralized `TOOL_DEFINITIONS` registry in
+`tool_registry.py` and are fully type-hinted.
 
 | Tool | Capability | Description |
 | --- | --- | --- |
@@ -62,6 +63,7 @@ All tools operate through the registry in `fs_tools.py` and are fully type-hinte
 
 - `config.py` — centralized configuration management with environment variable overrides
 - `agent.py` — planner prompt, model routing, tool validation, and ReAct agent loop with logging
+- `tool_registry.py` — the single source of truth for tool metadata and registration
 - `fs_tools.py` — filesystem, PDF, screenshot, and OCR integrations (fully type-hinted)
 - `ollama_client.py` — local Ollama API calls with configurable timeout and tool-call JSON extraction
 

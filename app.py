@@ -13,7 +13,7 @@ from config import (
     WORKSPACE_DIR
 )
 
-from fs_tools import TOOL_DEFINITIONS
+from tool_registry import TOOL_DEFINITIONS
 
 # logging configuration
 logger = logging.getLogger(__name__)

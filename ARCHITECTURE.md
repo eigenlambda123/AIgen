@@ -1,7 +1,8 @@
 # System Architecture
 
 This document describes the current `ΛIgen` architecture as implemented in
-`agent.py`, `fs_tools.py`, `ollama_client.py`, and `config.py`.
+`agent.py`, `tool_registry.py`, `fs_tools.py`, `ollama_client.py`, and
+`config.py`.
 
 ## 1. End-to-end system flow
 
@@ -17,7 +18,7 @@ flowchart TD
     X -->|No valid JSON object found| O[Return response to user]
     X -->|Tool JSON found| V[validate_tool_action]
     V -->|Invalid tool or args| O
-    V -->|Valid action| T[Look up tool in TOOL_REGISTRY]
+    V -->|Valid action| T[Look up tool in TOOL_DEFINITIONS]
     T --> E[Execute selected tool]
     E --> F[build_tool_feedback]
 
@@ -45,7 +46,7 @@ sequenceDiagram
     participant Agent as agent.py
     participant Planner as Ollama planner
     participant Parser as extract_tool_call
-    participant Registry as TOOL_REGISTRY
+    participant Registry as tool_registry.py
     participant Tool as Selected tool
     participant Vision as Ollama vision model
 
@@ -97,7 +98,7 @@ model.
 
 ```mermaid
 flowchart TD
-    R[TOOL_REGISTRY] --> FS[list_directory]
+    R[TOOL_DEFINITIONS] --> FS[list_directory]
     R --> RF[read_file]
     R --> RP[read_pdf]
     R --> SF[search_files]
@@ -117,6 +118,13 @@ flowchart TD
     OS --> CS
     OS --> OI
 ```
+
+The tool metadata and implementations now have separate responsibilities:
+
+- `tool_registry.py` owns the single `TOOL_DEFINITIONS` registry.
+- `fs_tools.py` owns the filesystem, PDF, screenshot, and OCR implementations.
+- `agent.py` and `app.py` consume the registry instead of constructing or
+  duplicating tool metadata.
 
 The filesystem tools share this workspace boundary:
 

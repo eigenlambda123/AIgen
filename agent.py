@@ -3,10 +3,10 @@ import re
 import logging
 from typing import Any, Dict, Tuple
 
-from fs_tools import TOOL_DEFINITIONS
 from ollama_client import call_ollama, extract_tool_call
 from config import DEFAULT_MODELS, MAX_AGENT_ITERATIONS
 from tool_framework import validate_tool_arguments, execute_tool
+from tool_registry import TOOL_DEFINITIONS
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")

@@ -1,7 +1,7 @@
 import pytest
 import time
 
-from fs_tools import TOOL_DEFINITIONS
+from tool_registry import TOOL_DEFINITIONS
 from tool_framework import (
     ToolDefinition,
     execute_tool,
