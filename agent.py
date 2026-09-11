@@ -211,10 +211,8 @@ def run_agent(user_query: str, model_overrides: Dict[str, str] = None) -> str:
         if not arguments_valid:
             logger.error("Invalid arguments: %s", argument_error)
             return raw_response
-        logger.info(
-            f"[Agent Execution] Invoking tool '{tool_name}' "
-            f"with args: {tool_args}"
-        )
+            
+        logger.info("Invoking tool: name=%s", tool_name)
 
         try:
             tool_result = execute_tool(tool_definition, tool_args)

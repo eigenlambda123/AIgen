@@ -1,10 +1,14 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 import inspect
+import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
 
 ToolCallable = Callable[..., Any]
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -80,7 +84,7 @@ def execute_tool(
     definition: ToolDefinition,
     arguments: dict[str, Any],
 ) -> Any:
-    """Execute a tool with its configured timeout and output limit.
+    """Execute a tool with timeout, output limits, and audit logging.
 
     Args:
         definition: Metadata for the selected tool.
@@ -91,24 +95,78 @@ def execute_tool(
 
     Raises:
         TimeoutError: If the tool exceeds its configured timeout.
+        Exception: If the tool itself raises an exception.
     """
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(definition.function, **arguments)
+    started_at = time.perf_counter()
+    argument_summary = summarize_arguments(arguments)
 
-        try:
-            result = future.result(timeout=definition.timeout_seconds)
-        except FutureTimeoutError as error:
-            future.cancel()
-            raise TimeoutError(
-                f"Tool '{definition.name}' exceeded its "
-                f"{definition.timeout_seconds:g}-second timeout."
-            ) from error
+    logger.info(
+        "Tool started: name=%s risk=%s arguments=%s",
+        definition.name,
+        definition.risk_level,
+        argument_summary,
+    )
 
-    if isinstance(result, str) and len(result) > definition.output_limit:
-        return (
-            result[:definition.output_limit]
-            + f"\n\n[... Truncated: tool output exceeds "
-            f"{definition.output_limit} characters ...]"
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(definition.function, **arguments)
+
+            try:
+                result = future.result(timeout=definition.timeout_seconds)
+            except FutureTimeoutError as error:
+                future.cancel()
+                duration = time.perf_counter() - started_at
+
+                logger.warning(
+                    "Tool timed out: name=%s duration=%.3fs timeout=%.3fs",
+                    definition.name,
+                    duration,
+                    definition.timeout_seconds,
+                )
+
+                raise TimeoutError(
+                    f"Tool '{definition.name}' exceeded its "
+                    f"{definition.timeout_seconds:g}-second timeout."
+                ) from error
+
+        if (
+            isinstance(result, str)
+            and definition.output_limit > 0
+            and len(result) > definition.output_limit
+        ):
+            result = (
+                result[:definition.output_limit]
+                + f"\n\n[... Truncated: tool output exceeds "
+                f"{definition.output_limit} characters ...]"
+            )
+
+        duration = time.perf_counter() - started_at
+
+        logger.info(
+            "Tool completed: name=%s duration=%.3fs result_type=%s",
+            definition.name,
+            duration,
+            type(result).__name__,
         )
 
-    return result
+        return result
+
+    except TimeoutError:
+        raise
+    except Exception:
+        duration = time.perf_counter() - started_at
+
+        logger.exception(
+            "Tool failed: name=%s duration=%.3fs",
+            definition.name,
+            duration,
+        )
+        raise
+
+
+def summarize_arguments(arguments: dict[str, Any]) -> dict[str, str]:
+    """Return argument names and types without exposing argument values."""
+    return {
+        name: type(value).__name__
+        for name, value in arguments.items()
+    }
